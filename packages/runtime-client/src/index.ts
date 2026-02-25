@@ -55,6 +55,54 @@ const STYLE_TEXT = `
   line-height: 1.2;
   white-space: nowrap;
 }
+.action-menu {
+  position: fixed;
+  min-width: 220px;
+  max-width: 320px;
+  display: none;
+  pointer-events: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.2);
+  overflow: hidden;
+}
+.action-menu-header {
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.action-menu-list {
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+}
+.action-item {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.action-item:hover {
+  background: #eff6ff;
+}
+.action-empty {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #64748b;
+}
 `;
 
 declare global {
@@ -71,6 +119,9 @@ class ToolRuntime {
   private fab: HTMLButtonElement;
   private overlay: HTMLDivElement;
   private label: HTMLDivElement;
+  private actionMenu: HTMLDivElement;
+  private actionMenuHeader: HTMLDivElement;
+  private actionMenuList: HTMLDivElement;
   private selectMode = false;
   private hoveredElement: HTMLElement | null = null;
 
@@ -99,7 +150,17 @@ class ToolRuntime {
     this.label = document.createElement("div");
     this.label.className = "label";
 
-    this.root.append(this.fab, this.overlay, this.label);
+    this.actionMenu = document.createElement("div");
+    this.actionMenu.className = "action-menu";
+
+    this.actionMenuHeader = document.createElement("div");
+    this.actionMenuHeader.className = "action-menu-header";
+
+    this.actionMenuList = document.createElement("div");
+    this.actionMenuList.className = "action-menu-list";
+
+    this.actionMenu.append(this.actionMenuHeader, this.actionMenuList);
+    this.root.append(this.fab, this.overlay, this.label, this.actionMenu);
     this.shadow.append(style, this.root);
 
     this.fab.addEventListener("click", this.handleFabClick);
@@ -131,16 +192,19 @@ class ToolRuntime {
     if (active) {
       window.addEventListener("mousemove", this.handleMouseMove, true);
       window.addEventListener("click", this.handleClick, true);
+      window.addEventListener("contextmenu", this.handleContextMenu, true);
       window.addEventListener("keydown", this.handleKeyDown, true);
       return;
     }
 
     window.removeEventListener("mousemove", this.handleMouseMove, true);
     window.removeEventListener("click", this.handleClick, true);
+    window.removeEventListener("contextmenu", this.handleContextMenu, true);
     window.removeEventListener("keydown", this.handleKeyDown, true);
 
     this.hoveredElement = null;
     this.hideOverlay();
+    this.hideActionMenu();
   }
 
   private handleKeyDown = (event: KeyboardEvent): void => {
@@ -168,6 +232,14 @@ class ToolRuntime {
       return;
     }
 
+    if (this.isActionMenuVisible()) {
+      if (event.target instanceof Node && this.actionMenu.contains(event.target)) {
+        return;
+      }
+
+      this.hideActionMenu();
+    }
+
     const element = this.findInstrumentedElement(event.target);
     if (!element) {
       return;
@@ -176,27 +248,42 @@ class ToolRuntime {
     event.preventDefault();
     event.stopPropagation();
 
-    const file = element.getAttribute(DATA_FILE_ATTR);
-    const line = Number.parseInt(element.getAttribute(DATA_LINE_ATTR) ?? "", 10);
-    const column = Number.parseInt(element.getAttribute(DATA_COLUMN_ATTR) ?? "", 10);
-
-    if (!file || Number.isNaN(line)) {
-      return;
-    }
-
     const action = this.getDefaultAction();
     if (!action) {
       return;
     }
 
-    const context: ToolActionContext = {
-      file,
-      line,
-      element,
-      ...(Number.isNaN(column) ? {} : { column })
-    };
+    const context = this.createActionContext(element);
+    if (!context) {
+      return;
+    }
 
-    action.run(context);
+    this.executeAction(action, context);
+  };
+
+  private handleContextMenu = (event: MouseEvent): void => {
+    if (!this.selectMode) {
+      return;
+    }
+
+    const element = this.findInstrumentedElement(event.target);
+    if (!element) {
+      this.hideActionMenu();
+      return;
+    }
+
+    const context = this.createActionContext(element);
+    if (!context) {
+      this.hideActionMenu();
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.hoveredElement = element;
+    this.updateOverlayPosition();
+    this.showActionMenu(event.clientX, event.clientY, context);
   };
 
   private findInstrumentedElement(target: EventTarget | null): HTMLElement | null {
@@ -217,6 +304,77 @@ class ToolRuntime {
     }
 
     return this.options.actions[0];
+  }
+
+  private createActionContext(element: HTMLElement): ToolActionContext | null {
+    const file = element.getAttribute(DATA_FILE_ATTR);
+    const line = Number.parseInt(element.getAttribute(DATA_LINE_ATTR) ?? "", 10);
+    const column = Number.parseInt(element.getAttribute(DATA_COLUMN_ATTR) ?? "", 10);
+
+    if (!file || Number.isNaN(line)) {
+      return null;
+    }
+
+    return {
+      file,
+      line,
+      element,
+      ...(Number.isNaN(column) ? {} : { column })
+    };
+  }
+
+  private executeAction(action: ToolAction, context: ToolActionContext): void {
+    try {
+      action.run(context);
+    } finally {
+      this.setSelectMode(false);
+    }
+  }
+
+  private showActionMenu(clientX: number, clientY: number, context: ToolActionContext): void {
+    this.actionMenuHeader.textContent = `${context.file}:${context.line}`;
+    this.actionMenuList.innerHTML = "";
+
+    if (this.options.actions.length === 0) {
+      const emptyState = document.createElement("div");
+      emptyState.className = "action-empty";
+      emptyState.textContent = "No actions available";
+      this.actionMenuList.append(emptyState);
+    } else {
+      for (const action of this.options.actions) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "action-item";
+        button.textContent = action.label;
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          this.executeAction(action, context);
+        });
+        this.actionMenuList.append(button);
+      }
+    }
+
+    this.actionMenu.style.display = "block";
+    this.actionMenu.style.left = "0px";
+    this.actionMenu.style.top = "0px";
+
+    const rect = this.actionMenu.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - rect.width - 8);
+    const maxTop = Math.max(8, window.innerHeight - rect.height - 8);
+    const left = Math.min(clientX, maxLeft);
+    const top = Math.min(clientY, maxTop);
+
+    this.actionMenu.style.left = `${left}px`;
+    this.actionMenu.style.top = `${top}px`;
+  }
+
+  private hideActionMenu(): void {
+    this.actionMenu.style.display = "none";
+  }
+
+  private isActionMenuVisible(): boolean {
+    return this.actionMenu.style.display === "block";
   }
 
   private updateOverlayPosition = (): void => {
