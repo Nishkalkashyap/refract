@@ -14,6 +14,7 @@
     "@babel/traverse": "latest",
     "@babel/types": "latest",
     "@nkstack/refract-tool-contracts": "workspace:*",
+    "@nkstack/tailwind-editor-react": "^0.1.1",
     "react": "latest"
   },
   "devDependencies": {

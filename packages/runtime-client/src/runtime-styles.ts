@@ -6,7 +6,7 @@ export const runtimeStyles = `
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 2147483647;
+  z-index: 2147483600;
   font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
 }
 .runtime-fab {
@@ -179,5 +179,17 @@ export const runtimeStyles = `
   outline: 2px solid #bfdbfe;
   outline-offset: 0;
   border-color: #3b82f6;
+}
+`;
+
+export const runtimeDocumentStyles = `
+/* Radix popover/menu/select content portals to document.body by default, not
+   inside Refract's ShadowRoot. Force those layers above the runtime shell so
+   toolbar overlays are visible and clickable. */
+body[data-refract-tool-runtime="active"] [data-radix-popper-content-wrapper],
+body[data-refract-tool-runtime="active"] [data-radix-select-content],
+body[data-refract-tool-runtime="active"] [data-radix-menu-content],
+body[data-refract-tool-runtime="active"] [data-radix-menubar-content] {
+  z-index: 2147483647 !important;
 }
 `;

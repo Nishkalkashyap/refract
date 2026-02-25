@@ -1,3 +1,5 @@
+/// <reference path="./css.d.ts" />
+
 "use client";
 
 import { createElement, Fragment, useCallback, useEffect, useRef, useState } from "react";
@@ -7,11 +9,32 @@ import {
   type RefractRuntimePlugin,
   type RefractServerResult
 } from "@nkstack/refract-tool-contracts";
+import { TailwindInspectorToolbar } from "@nkstack/tailwind-editor-react";
 
 import type { TailwindEditorInvokePayload } from "./types";
-import { TailwindEditorToolbarAdapter } from "./tailwind-toolbar-adapter.ts";
 
 const SAVE_DEBOUNCE_MS = 250;
+let tailwindEditorStylesPromise: Promise<void> | null = null;
+
+function ensureTailwindEditorStyles(): Promise<void> {
+  if (typeof document === "undefined") {
+    return Promise.resolve();
+  }
+
+  if (!tailwindEditorStylesPromise) {
+    // Load CSS only in the browser. Static CSS imports here are evaluated in
+    // server/build contexts (for example Vite plugin config loading) and can
+    // fail with unknown ".css" module errors.
+    tailwindEditorStylesPromise = import("@nkstack/tailwind-editor-react/style.css")
+      .then(() => undefined)
+      .catch((error: unknown) => {
+        tailwindEditorStylesPromise = null;
+        throw error;
+      });
+  }
+
+  return tailwindEditorStylesPromise;
+}
 
 type SaveState = "idle" | "saving" | "error";
 
@@ -117,7 +140,7 @@ function TailwindEditorPanel({
   return createElement(
     Fragment,
     null,
-    createElement(TailwindEditorToolbarAdapter, { value, onChange: handleChange }),
+    createElement(TailwindInspectorToolbar, { value, onChange: handleChange }),
     createElement(
       "div",
       {
@@ -132,7 +155,13 @@ function TailwindEditorPanel({
 export const tailwindEditorRuntimePlugin: RefractRuntimePlugin<TailwindEditorInvokePayload> = {
   id: "tailwind-editor",
   label: "Tailwind Editor",
-  inBrowserHandler({ ui }) {
+  async inBrowserHandler({ ui }) {
+    try {
+      await ensureTailwindEditorStyles();
+    } catch {
+      // Failing to load styles should not block the editor panel from opening.
+    }
+
     ui.openPanel();
   },
   Panel: TailwindEditorPanel
