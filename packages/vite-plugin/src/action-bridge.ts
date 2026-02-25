@@ -6,30 +6,29 @@ import { parse, type ParserPlugin } from "@babel/parser";
 import type {
   RefractFileContext,
   RefractSelectionRef,
-  RefractServerHandler,
+  RefractServerPlugin,
   RefractServerInvokeRequest,
   RefractServerResult
 } from "@nkstack/refract-tool-contracts";
 
-const REFRACT_PLUGIN_PATH = "/@refract/plugin";
-
-export interface ActionBridgePlugin {
-  id: string;
-  serverHandler?: RefractServerHandler;
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRefractServerPlugin = RefractServerPlugin<any, any>;
 
 export interface ActionBridgeOptions {
-  plugins: ActionBridgePlugin[];
+  plugins: AnyRefractServerPlugin[];
   getProjectRoot: () => string;
+  endpoint: string;
 }
 
 export class ActionBridge {
-  private readonly plugins: ActionBridgePlugin[];
+  private readonly plugins: AnyRefractServerPlugin[];
   private readonly getProjectRoot: () => string;
+  private readonly endpoint: string;
 
   constructor(options: ActionBridgeOptions) {
     this.plugins = options.plugins;
     this.getProjectRoot = options.getProjectRoot;
+    this.endpoint = options.endpoint;
   }
 
   readonly middleware = async (
@@ -38,7 +37,7 @@ export class ActionBridge {
     next: () => void
   ) => {
     const pathname = (request.url ?? "").split("?")[0];
-    if (request.method !== "POST" || pathname !== REFRACT_PLUGIN_PATH) {
+    if (request.method !== "POST" || pathname !== this.endpoint) {
       next();
       return;
     }
@@ -69,15 +68,6 @@ export class ActionBridge {
         ok: false,
         code: "PLUGIN_NOT_FOUND",
         message: `Unknown plugin '${invokeRequest.pluginId}'.`
-      });
-      return;
-    }
-
-    if (!plugin.serverHandler) {
-      this.respondJson(response, 404, {
-        ok: false,
-        code: "SERVER_HANDLER_NOT_FOUND",
-        message: `Plugin '${invokeRequest.pluginId}' does not expose a server handler.`
       });
       return;
     }

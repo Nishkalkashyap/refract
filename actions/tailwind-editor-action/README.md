@@ -1,8 +1,17 @@
 # @nkstack/refract-tailwind-editor-action
 
-Refract plugin that opens a Tailwind class editor panel for selected JSX elements.
+Tailwind class editor action for Refract.
 
-It previews class updates in the browser and persists changes to source files through the Refract server bridge.
+Exports split plugin pieces for the unified contract:
+
+- `tailwindEditorRuntimePlugin`
+- `tailwindEditorServerPlugin`
+- `tailwindEditorPluginBundle`
+
+Use framework-specific entrypoints when you only need one side:
+
+- runtime-only: `@nkstack/refract-tailwind-editor-action/runtime`
+- server-only: `@nkstack/refract-tailwind-editor-action/server`
 
 ## Install
 
@@ -10,36 +19,16 @@ It previews class updates in the browser and persists changes to source files th
 pnpm add @nkstack/refract-tailwind-editor-action
 ```
 
-## Usage
-
-```ts
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import { tailwindEditorPlugin } from "@nkstack/refract-tailwind-editor-action";
-import { refract } from "@nkstack/refract-vite-plugin";
-
-export default defineConfig({
-  plugins: [
-    refract({
-      plugins: [tailwindEditorPlugin],
-      defaultPluginId: "tailwind-editor"
-    }),
-    react()
-  ]
-});
-```
-
 ## Behavior
 
 - Opens a panel on element selection
 - Applies optimistic preview (`element.className = next`)
-- Debounces persistence calls to the server handler
+- Debounces persistence calls to server handler
 - Updates static JSX `className` via AST transform
 
-## Current Limitations
+## Limitation
 
-- Supports JSX/TSX files
-- Dynamic `className` expressions are rejected
+Dynamic `className` expressions are rejected.
 
 ## Disclaimer
 

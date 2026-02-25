@@ -62,12 +62,16 @@ export class JsxInstrumentation {
   }
 
   private isJsxLikeFile(id: string): boolean {
-    return /\.(jsx|tsx)$/.test(id);
+    return /\.(js|jsx|ts|tsx)$/.test(id);
   }
 
   private getParserPlugins(id: string): ("jsx" | "typescript")[] {
     if (id.endsWith(".tsx")) {
       return ["jsx", "typescript"];
+    }
+
+    if (id.endsWith(".ts")) {
+      return ["typescript"];
     }
 
     return ["jsx"];

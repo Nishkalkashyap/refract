@@ -10,7 +10,9 @@
   ],
   "scripts": {
     "dev": "pnpm --filter vite-example-app dev",
+    "dev:next": "pnpm --filter next-example-app dev",
     "build": "pnpm -r --if-present build",
+    "test": "pnpm -r --if-present test",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
     "release:check": "pnpm typecheck && pnpm lint && pnpm build",
@@ -19,10 +21,11 @@
     "release:publish": "pnpm run release:check && pnpm -r --filter \"@nkstack/refract-*\" publish --access public --no-git-checks"
   },
   "devDependencies": {
-    "@types/node": "latest",
     "@eslint/js": "latest",
+    "@types/node": "latest",
     "eslint": "latest",
     "globals": "latest",
+    "tsx": "^4.21.0",
     "turbo": "latest",
     "typescript": "latest",
     "typescript-eslint": "latest"

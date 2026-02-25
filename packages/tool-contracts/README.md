@@ -1,8 +1,6 @@
 # @nkstack/refract-tool-contracts
 
-Shared type contracts and helpers for the Refract ecosystem.
-
-Use this package when authoring custom Refract plugins so runtime, Vite plugin, and plugin packages stay type-aligned.
+Shared Refract contracts for runtime plugins, server plugins, and server bridge payloads.
 
 ## Install
 
@@ -10,43 +8,37 @@ Use this package when authoring custom Refract plugins so runtime, Vite plugin, 
 pnpm add @nkstack/refract-tool-contracts
 ```
 
-## What It Exposes
+## Main Types
 
-- Core plugin types:
-  - `RefractPlugin`
-  - `RefractRuntimePlugin`
-  - `RefractBrowserContext`
-  - `RefractServerContext`
-  - `RefractServerResult`
-- Runtime/bootstrap payload types
-- Helpers:
-  - `defineRefractBrowserPlugin(...)`
-  - `withRefractServerHandler(...)`
+- `RefractRuntimePlugin`
+- `RefractServerPlugin`
+- `RefractPluginBundle`
+- `RefractPluginRegistry`
+- `RefractBrowserContext`
+- `RefractServerContext`
+- `RefractServerResult`
 
-## Example
+## Registry Helper
 
 ```ts
-import {
-  defineRefractBrowserPlugin,
-  withRefractServerHandler,
-  type RefractPlugin
-} from "@nkstack/refract-tool-contracts";
+import { createRefractRegistry } from "@nkstack/refract-tool-contracts";
 
-const browserPlugin = defineRefractBrowserPlugin(import.meta.url, {
-  id: "my-plugin",
-  label: "My Plugin",
-  inBrowserHandler({ ui }) {
-    ui.openPanel();
-  }
+const registry = createRefractRegistry({
+  plugins: [
+    {
+      runtime: runtimePlugin,
+      server: serverPlugin
+    }
+  ],
+  defaultPluginId: "my-plugin"
 });
-
-export const myPlugin: RefractPlugin = withRefractServerHandler(
-  browserPlugin,
-  async ({ payload }) => {
-    return { ok: true, data: payload };
-  }
-);
 ```
+
+`createRefractRegistry(...)` validates:
+
+- runtime plugin ids are unique and non-empty
+- server plugin ids match runtime ids
+- `defaultPluginId` exists in runtime plugins
 
 ## Disclaimer
 

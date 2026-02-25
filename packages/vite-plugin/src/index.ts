@@ -1,88 +1,49 @@
-import path from "node:path";
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
-
-import type {
-  RefractPlugin,
-  RefractRuntimeBootstrapPayload,
-  RefractServerHandler
-} from "@nkstack/refract-tool-contracts";
-import { getRefractBrowserModuleUrl } from "@nkstack/refract-tool-contracts";
+import type { RefractServerPlugin } from "@nkstack/refract-tool-contracts";
 import type { Plugin } from "vite";
 
-import { ActionBridge, type ActionBridgePlugin } from "./action-bridge.ts";
+import { ActionBridge } from "./action-bridge.ts";
 import { JsxInstrumentation } from "./jsx-instrumentation.ts";
-import { RuntimeInjection } from "./runtime-injection.ts";
+
+const DEFAULT_ENDPOINT = "/api/refract/plugin";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyRefractPlugin = RefractPlugin<any, any>;
-
-interface ResolvedPluginRegistration extends ActionBridgePlugin {
-  browserModuleUrl: string;
-  serverHandler?: RefractServerHandler;
-}
+type AnyRefractServerPlugin = RefractServerPlugin<any, any>;
 
 export interface RefractVitePluginOptions {
-  plugins: AnyRefractPlugin[];
-  defaultPluginId?: string;
+  serverPlugins: AnyRefractServerPlugin[];
+  endpoint?: string;
 }
 
 class RefractPluginController {
-  private readonly plugins: ResolvedPluginRegistration[];
-  private readonly defaultPluginId: string | undefined;
-  private readonly actionBridge: ActionBridge;
+  private readonly serverPlugins: AnyRefractServerPlugin[];
+  private readonly endpoint: string;
   private readonly jsxInstrumentation: JsxInstrumentation;
-  private readonly runtimeInjection: RuntimeInjection;
 
   private root = "";
-  private runtimePayload: RefractRuntimeBootstrapPayload | null = null;
-  private runtimeBootstrapModule = "";
+  private actionBridge: ActionBridge;
 
   constructor(options: RefractVitePluginOptions) {
-    this.plugins = this.resolvePluginRegistrations(options.plugins);
-    this.defaultPluginId = options.defaultPluginId ?? this.plugins[0]?.id;
-
-    if (
-      this.defaultPluginId &&
-      !this.plugins.some((plugin) => plugin.id === this.defaultPluginId)
-    ) {
-      throw new Error(
-        `refract defaultPluginId '${this.defaultPluginId}' is not present in registered plugins.`
-      );
-    }
-
-    this.actionBridge = new ActionBridge({
-      plugins: this.plugins,
-      getProjectRoot: () => this.root
-    });
+    this.serverPlugins = this.resolveServerPlugins(options.serverPlugins);
+    this.endpoint = this.normalizeEndpoint(options.endpoint);
     this.jsxInstrumentation = new JsxInstrumentation();
-    this.runtimeInjection = new RuntimeInjection();
+    this.actionBridge = new ActionBridge({
+      plugins: this.serverPlugins,
+      getProjectRoot: () => this.root,
+      endpoint: this.endpoint
+    });
   }
 
   onConfigResolved(projectRoot: string): void {
     this.root = projectRoot;
-    this.runtimePayload = this.createRuntimePayload(projectRoot);
-    this.runtimeBootstrapModule = this.resolveRuntimeModuleForBrowser(
-      "@nkstack/refract-runtime-client/bootstrap",
-      projectRoot
-    );
+    this.actionBridge = new ActionBridge({
+      plugins: this.serverPlugins,
+      getProjectRoot: () => this.root,
+      endpoint: this.endpoint
+    });
   }
 
   configureServer() {
     return this.actionBridge.middleware;
-  }
-
-  transformIndexHtml() {
-    const projectRoot = this.root || process.cwd();
-    const payload = this.runtimePayload ?? this.createRuntimePayload(projectRoot);
-    const bootstrapModule =
-      this.runtimeBootstrapModule ||
-      this.resolveRuntimeModuleForBrowser(
-        "@nkstack/refract-runtime-client/bootstrap",
-        projectRoot
-      );
-
-    return [this.runtimeInjection.createTag(payload, bootstrapModule)];
   }
 
   transform(code: string, id: string) {
@@ -93,86 +54,41 @@ class RefractPluginController {
     });
   }
 
-  private resolvePluginRegistrations(plugins: AnyRefractPlugin[]): ResolvedPluginRegistration[] {
-    if (!Array.isArray(plugins) || plugins.length === 0) {
-      throw new Error("refract requires at least one plugin registration.");
+  private resolveServerPlugins(
+    serverPlugins: AnyRefractServerPlugin[]
+  ): AnyRefractServerPlugin[] {
+    if (!Array.isArray(serverPlugins)) {
+      throw new Error("refract requires 'serverPlugins' to be an array.");
     }
 
     const seenIds = new Set<string>();
 
-    return plugins.map((plugin) => {
+    for (const plugin of serverPlugins) {
       if (!plugin || typeof plugin !== "object") {
-        throw new Error("refract received an invalid plugin registration.");
+        throw new Error("refract received an invalid server plugin registration.");
       }
 
       if (!plugin.id || seenIds.has(plugin.id)) {
-        throw new Error(`refract plugin id '${plugin.id}' is missing or duplicated.`);
+        throw new Error(`refract server plugin id '${plugin.id}' is missing or duplicated.`);
+      }
+
+      if (typeof plugin.serverHandler !== "function") {
+        throw new Error(`refract server plugin '${plugin.id}' must define serverHandler.`);
       }
 
       seenIds.add(plugin.id);
+    }
 
-      if (!plugin.label || typeof plugin.inBrowserHandler !== "function") {
-        throw new Error(
-          `refract plugin '${plugin.id}' must define label and inBrowserHandler.`
-        );
-      }
-
-      const browserModuleUrl = getRefractBrowserModuleUrl(plugin);
-      if (!browserModuleUrl) {
-        throw new Error(
-          `refract plugin '${plugin.id}' is missing browser module metadata. Export browser plugins using defineRefractBrowserPlugin(import.meta.url, plugin).`
-        );
-      }
-
-      return {
-        id: plugin.id,
-        browserModuleUrl,
-        serverHandler: plugin.serverHandler
-      };
-    });
+    return serverPlugins;
   }
 
-  private createRuntimePayload(projectRoot: string): RefractRuntimeBootstrapPayload {
-    return {
-      plugins: this.plugins.map((plugin) => ({
-        id: plugin.id,
-        browserModule: this.resolveRuntimeModuleForBrowser(
-          plugin.browserModuleUrl,
-          projectRoot
-        )
-      })),
-      ...(this.defaultPluginId ? { defaultPluginId: this.defaultPluginId } : {})
-    };
-  }
-
-  private resolveRuntimeModuleForBrowser(moduleReference: string, projectRoot: string): string {
-    if (
-      moduleReference.startsWith("/@fs/") ||
-      moduleReference.startsWith("/@id/") ||
-      moduleReference.startsWith("http://") ||
-      moduleReference.startsWith("https://")
-    ) {
-      return moduleReference;
+  private normalizeEndpoint(endpoint: string | undefined): string {
+    const trimmed = endpoint?.trim();
+    if (!trimmed) {
+      return DEFAULT_ENDPOINT;
     }
 
-    if (moduleReference.startsWith("file://")) {
-      return this.toViteFsPath(fileURLToPath(moduleReference));
-    }
-
-    if (moduleReference.startsWith("./") || moduleReference.startsWith("../")) {
-      return this.toViteFsPath(path.resolve(projectRoot, moduleReference));
-    }
-
-    if (path.isAbsolute(moduleReference)) {
-      return this.toViteFsPath(moduleReference);
-    }
-
-    const projectRequire = createRequire(path.join(projectRoot, "package.json"));
-    return this.toViteFsPath(projectRequire.resolve(moduleReference));
-  }
-
-  private toViteFsPath(absolutePath: string): string {
-    return `/@fs/${absolutePath.replace(/\\/g, "/")}`;
+    return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   }
 }
 
@@ -188,9 +104,6 @@ export function refract(options: RefractVitePluginOptions): Plugin {
     },
     configureServer(server) {
       server.middlewares.use(controller.configureServer());
-    },
-    transformIndexHtml() {
-      return controller.transformIndexHtml();
     },
     transform(code, id) {
       return controller.transform(code, id);

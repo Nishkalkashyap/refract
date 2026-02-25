@@ -1,8 +1,13 @@
-import { withRefractServerHandler, type RefractPlugin } from "@nkstack/refract-tool-contracts";
+import type { RefractPluginBundle } from "@nkstack/refract-tool-contracts";
 
-import runtimePlugin from "./runtime.ts";
-import { tailwindEditorServerHandler } from "./server.ts";
+export { tailwindEditorRuntimePlugin } from "./runtime.ts";
+export { tailwindEditorServerPlugin } from "./server-plugin.ts";
+
+import { tailwindEditorRuntimePlugin } from "./runtime.ts";
+import { tailwindEditorServerPlugin } from "./server-plugin.ts";
 import type { TailwindEditorInvokePayload } from "./types";
 
-export const tailwindEditorPlugin: RefractPlugin<TailwindEditorInvokePayload> =
-  withRefractServerHandler(runtimePlugin, tailwindEditorServerHandler);
+export const tailwindEditorPluginBundle: RefractPluginBundle<TailwindEditorInvokePayload> = {
+  runtime: tailwindEditorRuntimePlugin,
+  server: tailwindEditorServerPlugin
+};

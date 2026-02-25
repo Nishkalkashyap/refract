@@ -71,24 +71,26 @@ export interface RefractRuntimePlugin<InvokePayload = unknown, InvokeResult = un
   Panel?: (props: RefractPanelProps<InvokePayload, InvokeResult>) => unknown;
 }
 
-export interface RefractPlugin<InvokePayload = unknown, InvokeResult = unknown>
-  extends RefractRuntimePlugin<InvokePayload, InvokeResult> {
-  serverHandler?: RefractServerHandler<InvokePayload, InvokeResult>;
+export interface RefractServerPlugin<InvokePayload = unknown, InvokeResult = unknown> {
+  id: string;
+  serverHandler: RefractServerHandler<InvokePayload, InvokeResult>;
+}
+
+export interface RefractPluginBundle<InvokePayload = unknown, InvokeResult = unknown> {
+  runtime: RefractRuntimePlugin<InvokePayload, InvokeResult>;
+  server?: RefractServerPlugin<InvokePayload, InvokeResult>;
+}
+
+export interface RefractPluginRegistry {
+  runtimePlugins: RefractRuntimePlugin[];
+  serverPlugins: RefractServerPlugin[];
+  defaultPluginId?: string;
 }
 
 export interface RefractRuntimeInitOptions {
   plugins: RefractRuntimePlugin[];
   defaultPluginId?: string;
-}
-
-export interface RefractRuntimeManifestPlugin {
-  id: string;
-  browserModule: string;
-}
-
-export interface RefractRuntimeBootstrapPayload {
-  plugins: RefractRuntimeManifestPlugin[];
-  defaultPluginId?: string;
+  serverEndpoint?: string;
 }
 
 export interface RefractServerInvokeRequest<InvokePayload = unknown> {
@@ -97,48 +99,85 @@ export interface RefractServerInvokeRequest<InvokePayload = unknown> {
   payload: InvokePayload;
 }
 
-const REFRACT_BROWSER_MODULE_URL = Symbol.for("refract.browser-module-url");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRefractPluginBundle = RefractPluginBundle<any, any>;
 
-type RefractBrowserModuleCarrier = {
-  [REFRACT_BROWSER_MODULE_URL]?: string;
-};
-
-export function defineRefractBrowserPlugin<
-  InvokePayload = unknown,
-  InvokeResult = unknown
->(
-  browserModuleUrl: string,
-  plugin: RefractRuntimePlugin<InvokePayload, InvokeResult>
-): RefractRuntimePlugin<InvokePayload, InvokeResult> {
-  if (!browserModuleUrl) {
-    throw new Error("defineRefractBrowserPlugin requires browserModuleUrl.");
+export function createRefractRegistry(options: {
+  plugins: AnyRefractPluginBundle[];
+  defaultPluginId?: string;
+}): RefractPluginRegistry {
+  if (!Array.isArray(options.plugins)) {
+    throw new Error("createRefractRegistry requires 'plugins' to be an array.");
   }
 
-  Object.defineProperty(plugin as RefractBrowserModuleCarrier, REFRACT_BROWSER_MODULE_URL, {
-    value: browserModuleUrl,
-    enumerable: false,
-    configurable: false,
-    writable: false
-  });
+  const runtimePlugins: RefractRuntimePlugin[] = [];
+  const serverPlugins: RefractServerPlugin[] = [];
+  const seenRuntimeIds = new Set<string>();
 
-  return plugin;
-}
+  for (const pluginBundle of options.plugins) {
+    const runtimePlugin = pluginBundle?.runtime;
+    if (!runtimePlugin || typeof runtimePlugin !== "object") {
+      throw new Error("Each plugin bundle must include a valid runtime plugin.");
+    }
 
-export function withRefractServerHandler<
-  InvokePayload = unknown,
-  InvokeResult = unknown
->(
-  browserPlugin: RefractRuntimePlugin<InvokePayload, InvokeResult>,
-  serverHandler: RefractServerHandler<InvokePayload, InvokeResult>
-): RefractPlugin<InvokePayload, InvokeResult> {
-  (browserPlugin as RefractPlugin<InvokePayload, InvokeResult>).serverHandler =
-    serverHandler;
-  return browserPlugin as RefractPlugin<InvokePayload, InvokeResult>;
-}
+    const runtimeId = runtimePlugin.id?.trim();
+    if (!runtimeId) {
+      throw new Error("Runtime plugin ids must be non-empty strings.");
+    }
 
-export function getRefractBrowserModuleUrl(
-  plugin: RefractRuntimePlugin | RefractPlugin
-): string | null {
-  const candidate = (plugin as RefractBrowserModuleCarrier)[REFRACT_BROWSER_MODULE_URL];
-  return typeof candidate === "string" && candidate.length > 0 ? candidate : null;
+    if (seenRuntimeIds.has(runtimeId)) {
+      throw new Error(`Runtime plugin id '${runtimeId}' is duplicated.`);
+    }
+
+    if (
+      typeof runtimePlugin.label !== "string" ||
+      typeof runtimePlugin.inBrowserHandler !== "function"
+    ) {
+      throw new Error(
+        `Runtime plugin '${runtimeId}' must define label and inBrowserHandler.`
+      );
+    }
+
+    seenRuntimeIds.add(runtimeId);
+    runtimePlugins.push(runtimePlugin);
+
+    const serverPlugin = pluginBundle.server;
+    if (typeof serverPlugin === "undefined") {
+      continue;
+    }
+
+    if (!serverPlugin || typeof serverPlugin !== "object") {
+      throw new Error(`Plugin bundle '${runtimeId}' has an invalid server plugin.`);
+    }
+
+    if (serverPlugin.id !== runtimeId) {
+      throw new Error(
+        `Server plugin id '${serverPlugin.id}' must match runtime plugin id '${runtimeId}'.`
+      );
+    }
+
+    if (typeof serverPlugin.serverHandler !== "function") {
+      throw new Error(`Server plugin '${runtimeId}' must define serverHandler.`);
+    }
+
+    serverPlugins.push(serverPlugin);
+  }
+
+  const requestedDefaultPluginId = options.defaultPluginId;
+  if (
+    requestedDefaultPluginId &&
+    !runtimePlugins.some((plugin) => plugin.id === requestedDefaultPluginId)
+  ) {
+    throw new Error(
+      `defaultPluginId '${requestedDefaultPluginId}' is not present in runtime plugins.`
+    );
+  }
+
+  const defaultPluginId = requestedDefaultPluginId ?? runtimePlugins[0]?.id;
+
+  return {
+    runtimePlugins,
+    serverPlugins,
+    ...(defaultPluginId ? { defaultPluginId } : {})
+  };
 }

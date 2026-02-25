@@ -1,30 +1,31 @@
 {
-  "name": "@nkstack/refract-tailwind-editor-action",
+  "name": "@nkstack/refract-next-plugin",
   "version": "0.0.0",
   "private": false,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./runtime": "./src/runtime.ts",
-    "./server": "./src/server-plugin.ts"
+    "./server": "./src/server.ts"
   },
   "dependencies": {
     "@babel/generator": "latest",
     "@babel/parser": "latest",
     "@babel/traverse": "latest",
     "@babel/types": "latest",
-    "@nkstack/refract-tool-contracts": "workspace:*",
-    "react": "latest"
+    "@nkstack/refract-tool-contracts": "workspace:*"
   },
   "devDependencies": {
     "@types/babel__generator": "latest",
-    "@types/babel__traverse": "latest",
-    "@types/react": "latest"
+    "@types/babel__traverse": "latest"
+  },
+  "peerDependencies": {
+    "next": "^16.0.0"
   },
   "scripts": {
-    "lint": "eslint src --ext .ts,.tsx",
+    "lint": "eslint src --ext .ts --ignore-pattern src/jsx-instrumentation-loader.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build": "tsc -p tsconfig.json --noEmit"
+    "build": "tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test test/**/*.test.ts"
   },
   "publishConfig": {
     "access": "public"

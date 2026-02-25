@@ -1,7 +1,8 @@
+"use client";
+
 import { createElement, Fragment, useCallback, useEffect, useRef, useState } from "react";
 
 import {
-  defineRefractBrowserPlugin,
   type RefractPanelProps,
   type RefractRuntimePlugin,
   type RefractServerResult
@@ -128,14 +129,11 @@ function TailwindEditorPanel({
   );
 }
 
-const tailwindEditorBrowserPlugin: RefractRuntimePlugin<TailwindEditorInvokePayload> =
-  defineRefractBrowserPlugin(import.meta.url, {
-    id: "tailwind-editor",
-    label: "Tailwind Editor",
-    inBrowserHandler({ ui }) {
-      ui.openPanel();
-    },
-    Panel: TailwindEditorPanel
-  });
-
-export default tailwindEditorBrowserPlugin;
+export const tailwindEditorRuntimePlugin: RefractRuntimePlugin<TailwindEditorInvokePayload> = {
+  id: "tailwind-editor",
+  label: "Tailwind Editor",
+  inBrowserHandler({ ui }) {
+    ui.openPanel();
+  },
+  Panel: TailwindEditorPanel
+};

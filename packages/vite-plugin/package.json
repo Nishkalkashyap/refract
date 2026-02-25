@@ -13,7 +13,6 @@
     "@babel/types": "latest",
     "@types/babel__generator": "latest",
     "@types/babel__traverse": "latest",
-    "@nkstack/refract-runtime-client": "workspace:*",
     "@nkstack/refract-tool-contracts": "workspace:*",
     "vite": "latest"
   },

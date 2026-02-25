@@ -77,3 +77,6 @@ export function initToolRuntime(options: RefractRuntimeInitOptions): void {
   runtime.mount();
   window[RUNTIME_KEY] = runtime;
 }
+
+export { RefractBootstrap } from "./RefractBootstrap";
+export type { RefractBootstrapProps } from "./RefractBootstrap";

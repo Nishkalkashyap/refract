@@ -4,8 +4,7 @@
   "private": false,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./bootstrap": "./src/bootstrap.ts"
+    ".": "./src/index.ts"
   },
   "dependencies": {
     "@nkstack/refract-tool-contracts": "workspace:*",

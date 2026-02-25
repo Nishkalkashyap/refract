@@ -1,8 +1,8 @@
 # @nkstack/refract-runtime-client
 
-Browser runtime for Refract.
+Browser runtime UI for Refract.
 
-This package renders the in-browser UI (selection mode, overlay, action menu, panel host) and executes registered Refract plugins.
+This package renders selection mode, overlay, action menu, and plugin panels in a Shadow DOM host.
 
 ## Install
 
@@ -10,21 +10,22 @@ This package renders the in-browser UI (selection mode, overlay, action menu, pa
 pnpm add @nkstack/refract-runtime-client
 ```
 
-## Intended Use
-
-Most apps should not use this package directly. It is typically bootstrapped by `@nkstack/refract-vite-plugin`.
-
 ## Exports
 
-- `@nkstack/refract-runtime-client`
-  - runtime entry (`initToolRuntime`)
-- `@nkstack/refract-runtime-client/bootstrap`
-  - bootstrap entry (`bootstrapToolRuntime`)
+- `initToolRuntime(...)`
+- `RefractBootstrap` React component
 
-## Notes
+## Usage
 
-- React + Shadow DOM runtime host
-- Designed for development mode workflows
+```tsx
+import { RefractBootstrap } from "@nkstack/refract-runtime-client";
+
+<RefractBootstrap
+  plugins={runtimePlugins}
+  defaultPluginId="tailwind-editor"
+  serverEndpoint="/api/refract/plugin"
+/>;
+```
 
 ## Disclaimer
 

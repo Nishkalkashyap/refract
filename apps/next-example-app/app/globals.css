@@ -1,0 +1,103 @@
+:root {
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  color: #1a1a2e;
+  background: #f6f7fb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(170deg, #f8f9ff 0%, #eef1ff 100%);
+}
+
+.page-shell {
+  margin: 0 auto;
+  max-width: 960px;
+  padding: 56px 20px 84px;
+}
+
+.hero-card {
+  border: 1px solid #d8ddef;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 28px 24px;
+  box-shadow: 0 16px 32px -28px rgba(31, 42, 79, 0.45);
+}
+
+.hero-card h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 2.4vw, 2.4rem);
+}
+
+.hero-card p {
+  margin: 10px 0 0;
+  line-height: 1.5;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #5a6186;
+}
+
+.content-grid {
+  margin-top: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .content-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.info-card {
+  border: 1px solid #d8ddef;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 20px;
+}
+
+.info-card h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.info-card p {
+  margin: 10px 0 0;
+  line-height: 1.45;
+}
+
+.preview-text {
+  color: #2d3557;
+}
+
+.primary-btn {
+  margin-top: 16px;
+  border: none;
+  border-radius: 10px;
+  background: #2e63ff;
+  color: #ffffff;
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary-btn:hover {
+  background: #214ed8;
+}
+
+.info-card ul {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+}

@@ -27,7 +27,7 @@ export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
   const [actionMenu, setActionMenu] = useState<ActionMenuState | null>(null);
   const [panelSession, setPanelSession] = useState<PanelSession | null>(null);
 
-  const invokeServer = useToolOperationClient();
+  const invokeServer = useToolOperationClient(options.serverEndpoint);
 
   const defaultPlugin = useMemo(() => {
     if (options.defaultPluginId) {

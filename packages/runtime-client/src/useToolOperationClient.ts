@@ -6,9 +6,9 @@ import type {
   RefractServerResult
 } from "@nkstack/refract-tool-contracts";
 
-const PLUGIN_ENDPOINT = "/@refract/plugin";
+const DEFAULT_PLUGIN_ENDPOINT = "/api/refract/plugin";
 
-export function useToolOperationClient() {
+export function useToolOperationClient(serverEndpoint = DEFAULT_PLUGIN_ENDPOINT) {
   return useCallback(
     async (
       pluginId: string,
@@ -22,7 +22,7 @@ export function useToolOperationClient() {
       };
 
       try {
-        const response = await fetch(PLUGIN_ENDPOINT, {
+        const response = await fetch(serverEndpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -58,7 +58,7 @@ export function useToolOperationClient() {
         };
       }
     },
-    []
+    [serverEndpoint]
   );
 }
 

@@ -1,28 +1,28 @@
 {
-  "name": "vite-example-app",
+  "name": "next-example-app",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint src vite.config.ts --ext .ts,.tsx",
-    "typecheck": "tsc -b --noEmit"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --ext .ts,.tsx",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@nkstack/refract-next-plugin": "workspace:*",
     "@nkstack/refract-runtime-client": "workspace:*",
     "@nkstack/refract-tailwind-editor-action": "workspace:*",
-    "@nkstack/refract-tool-contracts": "workspace:*",
-    "@nkstack/refract-vite-plugin": "workspace:*",
+    "next": "^16.0.0",
     "react": "latest",
     "react-dom": "latest"
   },
   "devDependencies": {
+    "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest"
+    "typescript": "latest"
   },
   "license": "MIT"
 }
