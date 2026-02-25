@@ -11,6 +11,8 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@refract/dummy-action": "workspace:*",
+    "@refract/tailwind-editor-action": "workspace:*",
     "@refract/vite-plugin": "workspace:*",
     "react": "latest",
     "react-dom": "latest"

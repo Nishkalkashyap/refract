@@ -4,50 +4,33 @@ import generateModule from "@babel/generator";
 import { parse } from "@babel/parser";
 import traverseModule, { type NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
+import type { ToolActionOperationResult } from "@refract/tool-contracts";
 
 const generate = getDefaultExport(generateModule);
 const traverse = getDefaultExport(traverseModule);
 
-export interface ClassNameUpdateRequest {
+interface UpdateClassNameRequest {
   absoluteFilePath: string;
   line: number;
   column?: number;
   nextClassName: string;
 }
 
-export interface ClassNameUpdateErrorResult {
-  ok: false;
-  code:
-    | "FILE_READ_ERROR"
-    | "PARSE_ERROR"
-    | "ELEMENT_NOT_FOUND"
-    | "UNSUPPORTED_DYNAMIC_CLASSNAME"
-    | "FILE_WRITE_ERROR";
-  message: string;
-  status: 400 | 404 | 409 | 500;
-}
-
-export interface ClassNameUpdateSuccessResult {
-  ok: true;
-}
-
-export type ClassNameUpdateResult = ClassNameUpdateSuccessResult | ClassNameUpdateErrorResult;
+type OperationFailure = Extract<ToolActionOperationResult, { ok: false }>;
 
 export async function updateClassNameInFile(
-  request: ClassNameUpdateRequest
-): Promise<ClassNameUpdateResult> {
-  const sourceCode = await readSourceFile(request.absoluteFilePath);
-  if (!sourceCode.ok) {
-    return sourceCode;
+  request: UpdateClassNameRequest
+): Promise<ToolActionOperationResult> {
+  const source = await readSourceFile(request.absoluteFilePath);
+  if (!source.ok) {
+    return source;
   }
-
-  const parserPlugins = getParserPlugins(request.absoluteFilePath);
 
   let ast: t.File;
   try {
-    ast = parse(sourceCode.value, {
+    ast = parse(source.value, {
       sourceType: "module",
-      plugins: parserPlugins
+      plugins: getParserPlugins(request.absoluteFilePath)
     });
   } catch {
     return {
@@ -70,9 +53,9 @@ export async function updateClassNameInFile(
     };
   }
 
-  const classNameResult = upsertStaticClassName(targetNode, request.nextClassName);
-  if (!classNameResult.ok) {
-    return classNameResult;
+  const updateResult = upsertClassName(targetNode, request.nextClassName);
+  if (!updateResult.ok) {
+    return updateResult;
   }
 
   const output = generate(
@@ -81,7 +64,7 @@ export async function updateClassNameInFile(
       retainLines: true,
       sourceMaps: false
     },
-    sourceCode.value
+    source.value
   );
 
   try {
@@ -112,11 +95,7 @@ function findTargetOpeningElement(
       }
 
       const start = pathRef.node.loc?.start;
-      if (!start) {
-        return;
-      }
-
-      if (start.line !== line) {
+      if (!start || start.line !== line) {
         return;
       }
 
@@ -132,41 +111,40 @@ function findTargetOpeningElement(
   return found;
 }
 
-function upsertStaticClassName(
+function upsertClassName(
   node: t.JSXOpeningElement,
   nextClassName: string
-): ClassNameUpdateSuccessResult | ClassNameUpdateErrorResult {
-  const existingClassName = node.attributes.find(
+): ToolActionOperationResult {
+  const classNameAttribute = node.attributes.find(
     (attribute): attribute is t.JSXAttribute =>
       attribute.type === "JSXAttribute" &&
       attribute.name.type === "JSXIdentifier" &&
       attribute.name.name === "className"
   );
 
-  if (!existingClassName) {
+  if (!classNameAttribute) {
     node.attributes.push(
       t.jsxAttribute(t.jsxIdentifier("className"), t.stringLiteral(nextClassName))
     );
     return { ok: true };
   }
 
-  if (!existingClassName.value || existingClassName.value.type === "StringLiteral") {
-    existingClassName.value = t.stringLiteral(nextClassName);
+  if (!classNameAttribute.value || classNameAttribute.value.type === "StringLiteral") {
+    classNameAttribute.value = t.stringLiteral(nextClassName);
     return { ok: true };
   }
 
   return {
     ok: false,
     code: "UNSUPPORTED_DYNAMIC_CLASSNAME",
-    message:
-      "This element uses a dynamic className expression. v1 supports only static className strings.",
+    message: "This element uses a dynamic className expression. v1 supports only static className strings.",
     status: 409
   };
 }
 
 async function readSourceFile(
   absoluteFilePath: string
-): Promise<{ ok: true; value: string } | ClassNameUpdateErrorResult> {
+): Promise<{ ok: true; value: string } | OperationFailure> {
   try {
     const value = await fs.readFile(absoluteFilePath, "utf8");
     return { ok: true, value };

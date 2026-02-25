@@ -7,10 +7,20 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@refract/runtime-client": "workspace:*"
+    "@babel/generator": "latest",
+    "@babel/parser": "latest",
+    "@babel/traverse": "latest",
+    "@babel/types": "latest",
+    "@refract/tool-contracts": "workspace:*",
+    "react": "latest"
+  },
+  "devDependencies": {
+    "@types/babel__generator": "latest",
+    "@types/babel__traverse": "latest",
+    "@types/react": "latest"
   },
   "scripts": {
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json --noEmit"
   }

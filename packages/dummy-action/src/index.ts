@@ -1,11 +1,18 @@
-import type { ToolAction } from "@refract/runtime-client";
+import { createRequire } from "node:module";
 
-export const dummyAction: ToolAction = {
-  id: "dummy",
-  label: "Log Action",
-  run({ file, line, element }) {
-    console.log(
-      `action taken on ${element.tagName.toLowerCase()} element with file ${file}, line number ${line}`
-    );
+import type { ToolActionRegistration } from "@refract/tool-contracts";
+
+const require = createRequire(import.meta.url);
+const ACTION_ID = "dummy";
+
+export const dummyActionRegistration: ToolActionRegistration = {
+  id: ACTION_ID,
+  runtimeImport: {
+    module: toPosixPath(require.resolve("./runtime.ts")),
+    exportName: "dummyRuntimeAction"
   }
 };
+
+function toPosixPath(value: string): string {
+  return value.replace(/\\/g, "/");
+}

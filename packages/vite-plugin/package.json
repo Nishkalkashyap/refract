@@ -13,9 +13,8 @@
     "@babel/types": "latest",
     "@types/babel__generator": "latest",
     "@types/babel__traverse": "latest",
-    "@refract/dummy-action": "workspace:*",
     "@refract/runtime-client": "workspace:*",
-    "@refract/tailwind-editor-action": "workspace:*",
+    "@refract/tool-contracts": "workspace:*",
     "vite": "latest"
   },
   "scripts": {

@@ -32,6 +32,12 @@ importers:
 
   apps/vite-example-app:
     dependencies:
+      '@refract/dummy-action':
+        specifier: workspace:*
+        version: link:../../packages/dummy-action
+      '@refract/tailwind-editor-action':
+        specifier: workspace:*
+        version: link:../../packages/tailwind-editor-action
       '@refract/vite-plugin':
         specifier: workspace:*
         version: link:../../packages/vite-plugin
@@ -57,12 +63,15 @@ importers:
 
   packages/dummy-action:
     dependencies:
-      '@refract/runtime-client':
+      '@refract/tool-contracts':
         specifier: workspace:*
-        version: link:../runtime-client
+        version: link:../tool-contracts
 
   packages/runtime-client:
     dependencies:
+      '@refract/tool-contracts':
+        specifier: workspace:*
+        version: link:../tool-contracts
       react:
         specifier: latest
         version: 19.2.4
@@ -79,9 +88,36 @@ importers:
 
   packages/tailwind-editor-action:
     dependencies:
-      '@refract/runtime-client':
+      '@babel/generator':
+        specifier: latest
+        version: 7.29.1
+      '@babel/parser':
+        specifier: latest
+        version: 7.29.0
+      '@babel/traverse':
+        specifier: latest
+        version: 7.29.0
+      '@babel/types':
+        specifier: latest
+        version: 7.29.0
+      '@refract/tool-contracts':
         specifier: workspace:*
-        version: link:../runtime-client
+        version: link:../tool-contracts
+      react:
+        specifier: latest
+        version: 19.2.4
+    devDependencies:
+      '@types/babel__generator':
+        specifier: latest
+        version: 7.27.0
+      '@types/babel__traverse':
+        specifier: latest
+        version: 7.28.0
+      '@types/react':
+        specifier: latest
+        version: 19.2.14
+
+  packages/tool-contracts: {}
 
   packages/vite-plugin:
     dependencies:
@@ -97,15 +133,12 @@ importers:
       '@babel/types':
         specifier: latest
         version: 7.29.0
-      '@refract/dummy-action':
-        specifier: workspace:*
-        version: link:../dummy-action
       '@refract/runtime-client':
         specifier: workspace:*
         version: link:../runtime-client
-      '@refract/tailwind-editor-action':
+      '@refract/tool-contracts':
         specifier: workspace:*
-        version: link:../tailwind-editor-action
+        version: link:../tool-contracts
       '@types/babel__generator':
         specifier: latest
         version: 7.27.0

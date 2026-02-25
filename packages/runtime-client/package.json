@@ -8,6 +8,7 @@
     "./types": "./src/types.ts"
   },
   "dependencies": {
+    "@refract/tool-contracts": "workspace:*",
     "react": "latest",
     "react-dom": "latest"
   },

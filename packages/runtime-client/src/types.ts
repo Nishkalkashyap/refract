@@ -1,17 +1,14 @@
-export interface ToolActionContext {
-  file: string;
-  line: number;
-  column?: number;
-  element: HTMLElement;
-}
-
-export interface ToolAction {
-  id: string;
-  label: string;
-  run(context: ToolActionContext): void;
-}
-
-export interface ToolRuntimeInitOptions {
-  actions: ToolAction[];
-  defaultActionId?: string;
-}
+export type {
+  ToolActionOperationRequest,
+  ToolActionOperationResult,
+  ToolActionRegistration,
+  ToolRuntimeAction,
+  ToolRuntimeActionContext,
+  ToolRuntimeCommandAction,
+  ToolRuntimeInitOptions,
+  ToolRuntimePanelAction,
+  ToolRuntimePanelProps,
+  ToolSelectionRef,
+  ToolServerOperationContext,
+  ToolServerOperationHandler
+} from "@refract/tool-contracts";
