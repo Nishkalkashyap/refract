@@ -20,6 +20,10 @@ interface PanelSession {
   plugin: RefractRuntimePlugin;
   selectionRef: RuntimeSelectionTarget["selectionRef"];
   element: HTMLElement;
+  anchorPoint: {
+    x: number;
+    y: number;
+  };
 }
 
 export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
@@ -60,12 +64,12 @@ export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
   const hoveredTarget = useSelectionMode({
     enabled: selectMode,
     hostElement,
-    onPrimarySelect: (target) => {
+    onPrimarySelect: (target, position) => {
       if (!defaultPlugin) {
         return;
       }
 
-      executePlugin(defaultPlugin, target);
+      executePlugin(defaultPlugin, target, position);
     },
     onContextSelect: (target, position) => {
       setActionMenu({
@@ -99,7 +103,10 @@ export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
               return;
             }
 
-            executePlugin(plugin, actionMenu.target);
+            executePlugin(plugin, actionMenu.target, {
+              x: actionMenu.x,
+              y: actionMenu.y
+            });
           }}
         />
       ) : null}

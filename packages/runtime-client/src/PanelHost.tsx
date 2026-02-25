@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import type {
   RefractPanelProps,
@@ -11,6 +11,10 @@ interface PanelSession {
   plugin: RefractRuntimePlugin;
   selectionRef: RefractSelectionRef;
   element: HTMLElement;
+  anchorPoint: {
+    x: number;
+    y: number;
+  };
 }
 
 interface PanelHostProps {
@@ -23,15 +27,93 @@ interface PanelHostProps {
   ) => Promise<RefractServerResult>;
 }
 
+const PANEL_ANCHOR_GAP = 8;
+const PANEL_VIEWPORT_MARGIN = 8;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
 export function PanelHost({ session, onClose, invokeServer }: PanelHostProps) {
-  if (!session.plugin.Panel) {
+  const [anchoredPosition, setAnchoredPosition] = useState<{ left: number; top: number } | null>(
+    null
+  );
+  const panelHostRef = useRef<HTMLDivElement | null>(null);
+  const anchorPoint = session.anchorPoint;
+
+  const updateAnchoredPosition = useCallback(() => {
+    const panelHost = panelHostRef.current;
+    if (!panelHost) {
+      return;
+    }
+
+    const rect = panelHost.getBoundingClientRect();
+    const maxLeft = Math.max(
+      PANEL_VIEWPORT_MARGIN,
+      window.innerWidth - rect.width - PANEL_VIEWPORT_MARGIN
+    );
+
+    const left = clamp(anchorPoint.x, PANEL_VIEWPORT_MARGIN, maxLeft);
+    const belowTop = anchorPoint.y + PANEL_ANCHOR_GAP;
+    const aboveTop = anchorPoint.y - PANEL_ANCHOR_GAP - rect.height;
+
+    let top = belowTop;
+    if (
+      belowTop + rect.height + PANEL_VIEWPORT_MARGIN > window.innerHeight &&
+      aboveTop >= PANEL_VIEWPORT_MARGIN
+    ) {
+      top = aboveTop;
+    }
+
+    const maxTop = Math.max(
+      PANEL_VIEWPORT_MARGIN,
+      window.innerHeight - rect.height - PANEL_VIEWPORT_MARGIN
+    );
+
+    setAnchoredPosition({
+      left,
+      top: clamp(top, PANEL_VIEWPORT_MARGIN, maxTop)
+    });
+  }, [anchorPoint]);
+
+  useLayoutEffect(() => {
+    updateAnchoredPosition();
+  }, [
+    anchorPoint,
+    session.selectionRef.column,
+    session.selectionRef.file,
+    session.selectionRef.line,
+    updateAnchoredPosition
+  ]);
+
+  useEffect(() => {
+    const onResize = () => {
+      updateAnchoredPosition();
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+    };
+  }, [anchorPoint, updateAnchoredPosition]);
+
+  const Panel = session.plugin.Panel as ((props: RefractPanelProps) => ReactNode) | undefined;
+  if (!Panel) {
     return null;
   }
 
-  const Panel = session.plugin.Panel as (props: RefractPanelProps) => ReactNode;
+  const anchoredStyle = {
+    left: `${Math.round(anchoredPosition?.left ?? anchorPoint.x)}px`,
+    top: `${Math.round(anchoredPosition?.top ?? anchorPoint.y + PANEL_ANCHOR_GAP)}px`
+  };
 
   return (
-    <div className="panel-host">
+    <div
+      ref={panelHostRef}
+      className="panel-host"
+      data-mode="anchored"
+      style={anchoredStyle}
+    >
       <div className="panel-shell">
         <div className="panel-head">
           <div className="panel-title">

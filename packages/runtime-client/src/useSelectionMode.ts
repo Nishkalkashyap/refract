@@ -6,7 +6,7 @@ import { findInstrumentedElement, toSelectionTarget } from "./runtime-dom";
 interface UseSelectionModeOptions {
   enabled: boolean;
   hostElement: HTMLElement;
-  onPrimarySelect: (target: RuntimeSelectionTarget) => void;
+  onPrimarySelect: (target: RuntimeSelectionTarget, position: { x: number; y: number }) => void;
   onContextSelect: (target: RuntimeSelectionTarget, position: { x: number; y: number }) => void;
   onClearIntent: () => void;
   onEscape: () => void;
@@ -62,7 +62,7 @@ export function useSelectionMode(options: UseSelectionModeOptions): RuntimeSelec
 
       event.preventDefault();
       event.stopPropagation();
-      onPrimarySelect(target);
+      onPrimarySelect(target, { x: event.clientX, y: event.clientY });
     };
 
     const onContextMenu = (event: MouseEvent) => {

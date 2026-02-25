@@ -6,6 +6,11 @@ import type {
   RefractServerResult
 } from "@nkstack/refract-tool-contracts";
 
+interface InteractionPoint {
+  x: number;
+  y: number;
+}
+
 interface UseActionExecutorOptions {
   invokeServer: (
     pluginId: string,
@@ -16,6 +21,7 @@ interface UseActionExecutorOptions {
     plugin: RefractRuntimePlugin;
     selectionRef: RefractSelectionRef;
     element: HTMLElement;
+    anchorPoint: InteractionPoint;
   }) => void;
   closePanel: () => void;
   closeSelectMode: () => void;
@@ -28,7 +34,8 @@ export function useActionExecutor(options: UseActionExecutorOptions) {
   return useCallback(
     (
       plugin: RefractRuntimePlugin,
-      target: { selectionRef: RefractSelectionRef; element: HTMLElement }
+      target: { selectionRef: RefractSelectionRef; element: HTMLElement },
+      interactionPoint: InteractionPoint
     ) => {
       clearContextMenu();
       closeSelectMode();
@@ -47,7 +54,8 @@ export function useActionExecutor(options: UseActionExecutorOptions) {
               openPanel({
                 plugin,
                 selectionRef: target.selectionRef,
-                element: target.element
+                element: target.element,
+                anchorPoint: interactionPoint
               });
             },
             closePanel

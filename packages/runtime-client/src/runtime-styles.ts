@@ -110,6 +110,15 @@ export const runtimeStyles = `
   top: 16px;
   pointer-events: auto;
 }
+.panel-host[data-mode="anchored"] {
+  left: 0;
+  right: auto;
+  top: 0;
+  max-width: calc(100vw - 16px);
+}
+.panel-host[data-mode="anchored"] .panel-shell {
+  max-width: calc(100vw - 16px);
+}
 .panel-shell {
   border: 1px solid #d1d5db;
   border-radius: 14px;

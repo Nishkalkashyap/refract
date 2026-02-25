@@ -51,8 +51,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/tool-contracts
       '@nkstack/tailwind-editor-react':
-        specifier: ^0.1.1
-        version: 0.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)
+        specifier: ^0.2.0
+        version: 0.2.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)
       react:
         specifier: latest
         version: 19.2.4
@@ -729,11 +729,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@nkstack/tailwind-editor-core@0.1.1':
-    resolution: {integrity: sha512-eWh8bjgtt8xYd41Qcs0QUx2CGk9ZV351nxPgRjSxSH/N9mIQbUU2cHKJ0jrKMTZZ5TQ5w/4lsmFEBxAhTVGKjQ==}
+  '@nkstack/tailwind-editor-core@0.2.0':
+    resolution: {integrity: sha512-CmI/6/iDikSRCiVSjBBrNuGtsso7GHX0IbWoF0UiUexy02KE7+vBpbQanrJySwQo1pR1hnK+NAF4NUNBy9YJ8w==}
 
-  '@nkstack/tailwind-editor-react@0.1.1':
-    resolution: {integrity: sha512-Xl9yper6WRvTK7VUdkbpt1/8K5KpPhVccsXi57mLMxzUvP7wtW0J3bgMjNox4mrmRwWLyF1EKcFPCQGYG30xAQ==}
+  '@nkstack/tailwind-editor-react@0.2.0':
+    resolution: {integrity: sha512-BHcxDXVI5r05Wrc7OwbQWHI9NsYHTQEYUAO3RmvaiaI6Lq0b3lBz7tcT5Mqz6JUycwi6Mk346855hGAasJWCNw==}
     peerDependencies:
       react: ^19.0.0
       react-dom: ^19.0.0
@@ -2686,13 +2686,13 @@ snapshots:
   '@next/swc-win32-x64-msvc@16.1.6':
     optional: true
 
-  '@nkstack/tailwind-editor-core@0.1.1':
+  '@nkstack/tailwind-editor-core@0.2.0':
     dependencies:
       tailwind-merge: 3.5.0
 
-  '@nkstack/tailwind-editor-react@0.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)':
+  '@nkstack/tailwind-editor-react@0.2.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)':
     dependencies:
-      '@nkstack/tailwind-editor-core': 0.1.1
+      '@nkstack/tailwind-editor-core': 0.2.0
       '@radix-ui/react-select': 2.2.6(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@radix-ui/react-slot': 1.2.4(@types/react@19.2.14)(react@19.2.4)
       class-variance-authority: 0.7.1
