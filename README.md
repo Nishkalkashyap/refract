@@ -5,7 +5,6 @@ Refract is a development-only visual design mode for React + Vite apps.
 It lets you pick rendered elements in the browser, map them back to source (`file + line + column`), and run extensible plugins on them. The current built-in plugins include:
 
 - `tailwind-editor`: opens an editor panel for class updates
-- `dummy`: logs selected element metadata
 
 ## What It Does
 
@@ -29,7 +28,6 @@ It lets you pick rendered elements in the browser, map them back to source (`fil
 - `packages/vite-plugin`: Vite plugin (JSX instrumentation + runtime injection + plugin bridge)
 - `packages/runtime-client`: React runtime UI (FAB, overlay, menu, panel host)
 - `packages/tool-contracts`: shared plugin/runtime/server contracts
-- `actions/dummy-action`: command-style plugin example
 - `actions/tailwind-editor-action`: panel plugin + server handler example
 
 ## Quick Start
@@ -54,12 +52,11 @@ Then open the app URL shown by Vite.
 Plugins are registered explicitly in Vite config:
 
 ```ts
-import { dummyPlugin } from "@refract/dummy-action";
-import { tailwindEditorPlugin } from "@refract/tailwind-editor-action";
-import { refract } from "@refract/vite-plugin";
+import { tailwindEditorPlugin } from "@nkstack/refract-tailwind-editor-action";
+import { refract } from "@nkstack/refract-vite-plugin";
 
 refract({
-  plugins: [tailwindEditorPlugin, dummyPlugin],
+  plugins: [tailwindEditorPlugin],
   defaultPluginId: "tailwind-editor"
 });
 ```

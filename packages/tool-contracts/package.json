@@ -1,7 +1,7 @@
 {
-  "name": "@refract/tool-contracts",
+  "name": "@nkstack/refract-tool-contracts",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -10,5 +10,9 @@
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json --noEmit"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT"
 }

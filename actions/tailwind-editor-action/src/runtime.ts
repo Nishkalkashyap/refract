@@ -5,7 +5,7 @@ import {
   type RefractPanelProps,
   type RefractRuntimePlugin,
   type RefractServerResult
-} from "@refract/tool-contracts";
+} from "@nkstack/refract-tool-contracts";
 
 import type { TailwindEditorInvokePayload } from "./types";
 import { TailwindEditorToolbarAdapter } from "./tailwind-toolbar-adapter.ts";

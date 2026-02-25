@@ -6,10 +6,10 @@ This document describes the technical architecture powering Refract.
 
 Refract is composed of four primary layers:
 
-1. Vite plugin (`@refract/vite-plugin`)
-2. Browser runtime (`@refract/runtime-client`)
+1. Vite plugin (`@nkstack/refract-vite-plugin`)
+2. Browser runtime (`@nkstack/refract-runtime-client`)
 3. Plugin modules (`actions/*`)
-4. Shared contracts (`@refract/tool-contracts`)
+4. Shared contracts (`@nkstack/refract-tool-contracts`)
 
 Flow at a high level:
 
@@ -57,7 +57,7 @@ This prevents runtime/plugin/server packages from drifting apart.
 
 2. Runtime injection
 - Injects an inline `<script type="module">` in dev HTML.
-- Calls `bootstrapToolRuntime(...)` from `@refract/runtime-client/bootstrap`.
+- Calls `bootstrapToolRuntime(...)` from `@nkstack/refract-runtime-client/bootstrap`.
 - Passes plugin manifest data (`id`, `browserModule`, `defaultPluginId`).
 
 3. Generic plugin bridge
@@ -111,11 +111,6 @@ Typical structure:
 3. Package entrypoint (`index.ts`)
 - Exports final plugin, optionally composed with:
   - `withRefractServerHandler(browserPlugin, serverHandler)`
-
-### Dummy Plugin
-
-- Browser behavior: logs selected element + source metadata
-- No server handler
 
 ### Tailwind Editor Plugin
 

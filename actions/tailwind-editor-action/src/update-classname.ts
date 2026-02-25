@@ -4,7 +4,7 @@ import generateModule from "@babel/generator";
 import { parse } from "@babel/parser";
 import traverseModule, { type NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
-import type { RefractServerResult } from "@refract/tool-contracts";
+import type { RefractServerResult } from "@nkstack/refract-tool-contracts";
 
 const generate = getDefaultExport(generateModule);
 const traverse = getDefaultExport(traverseModule);

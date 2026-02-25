@@ -81,6 +81,9 @@ We will use a **TurboRepo monorepo**.
   /packages
     /vite-plugin
     /runtime-client
+    /tool-contracts
+
+  /actions
     /dummy-action
 ```
 

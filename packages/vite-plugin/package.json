@@ -1,7 +1,7 @@
 {
-  "name": "@refract/vite-plugin",
+  "name": "@nkstack/refract-vite-plugin",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -13,13 +13,17 @@
     "@babel/types": "latest",
     "@types/babel__generator": "latest",
     "@types/babel__traverse": "latest",
-    "@refract/runtime-client": "workspace:*",
-    "@refract/tool-contracts": "workspace:*",
+    "@nkstack/refract-runtime-client": "workspace:*",
+    "@nkstack/refract-tool-contracts": "workspace:*",
     "vite": "latest"
   },
   "scripts": {
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json --noEmit"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT"
 }

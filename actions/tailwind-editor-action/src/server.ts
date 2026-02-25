@@ -1,4 +1,4 @@
-import type { RefractServerHandler } from "@refract/tool-contracts";
+import type { RefractServerHandler } from "@nkstack/refract-tool-contracts";
 
 import type { TailwindEditorInvokePayload } from "./types";
 import { ClassNameFileUpdater } from "./update-classname.ts";

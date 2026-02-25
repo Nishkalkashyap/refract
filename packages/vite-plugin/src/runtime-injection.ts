@@ -1,4 +1,4 @@
-import type { RefractRuntimeBootstrapPayload } from "@refract/tool-contracts";
+import type { RefractRuntimeBootstrapPayload } from "@nkstack/refract-tool-contracts";
 import type { HtmlTagDescriptor } from "vite";
 
 export class RuntimeInjection {

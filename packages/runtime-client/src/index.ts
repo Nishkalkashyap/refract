@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
-import type { RefractRuntimeInitOptions } from "@refract/tool-contracts";
+import type { RefractRuntimeInitOptions } from "@nkstack/refract-tool-contracts";
 
 import { runtimeStyles } from "./runtime-styles";
 import { ToolRuntimeApp } from "./ToolRuntimeApp";

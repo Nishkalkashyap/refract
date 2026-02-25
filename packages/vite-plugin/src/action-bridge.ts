@@ -9,7 +9,7 @@ import type {
   RefractServerHandler,
   RefractServerInvokeRequest,
   RefractServerResult
-} from "@refract/tool-contracts";
+} from "@nkstack/refract-tool-contracts";
 
 const REFRACT_PLUGIN_PATH = "/@refract/plugin";
 

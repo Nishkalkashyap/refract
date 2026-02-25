@@ -17,16 +17,32 @@ export const runtimeStyles = `
   height: 52px;
   border: none;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
   color: #ffffff;
-  background: #111827;
+  background: linear-gradient(135deg, #111827 0%, #0f172a 100%);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   pointer-events: auto;
+  padding: 0;
 }
 .runtime-fab[data-active="true"] {
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+}
+.runtime-fab-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.runtime-fab-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.runtime-fab-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 .selection-overlay {
   position: fixed;

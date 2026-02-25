@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { RefractRuntimeInitOptions, RefractRuntimePlugin } from "@refract/tool-contracts";
+import type { RefractRuntimeInitOptions, RefractRuntimePlugin } from "@nkstack/refract-tool-contracts";
 
 import { ActionMenu, type ActionMenuState } from "./ActionMenu";
 import { PanelHost } from "./PanelHost";

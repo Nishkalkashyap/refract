@@ -6,13 +6,16 @@ import type {
   RefractPlugin,
   RefractRuntimeBootstrapPayload,
   RefractServerHandler
-} from "@refract/tool-contracts";
-import { getRefractBrowserModuleUrl } from "@refract/tool-contracts";
+} from "@nkstack/refract-tool-contracts";
+import { getRefractBrowserModuleUrl } from "@nkstack/refract-tool-contracts";
 import type { Plugin } from "vite";
 
 import { ActionBridge, type ActionBridgePlugin } from "./action-bridge.ts";
 import { JsxInstrumentation } from "./jsx-instrumentation.ts";
 import { RuntimeInjection } from "./runtime-injection.ts";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRefractPlugin = RefractPlugin<any, any>;
 
 interface ResolvedPluginRegistration extends ActionBridgePlugin {
   browserModuleUrl: string;
@@ -20,7 +23,7 @@ interface ResolvedPluginRegistration extends ActionBridgePlugin {
 }
 
 export interface RefractVitePluginOptions {
-  plugins: RefractPlugin[];
+  plugins: AnyRefractPlugin[];
   defaultPluginId?: string;
 }
 
@@ -60,7 +63,7 @@ class RefractPluginController {
     this.root = projectRoot;
     this.runtimePayload = this.createRuntimePayload(projectRoot);
     this.runtimeBootstrapModule = this.resolveRuntimeModuleForBrowser(
-      "@refract/runtime-client/bootstrap",
+      "@nkstack/refract-runtime-client/bootstrap",
       projectRoot
     );
   }
@@ -75,7 +78,7 @@ class RefractPluginController {
     const bootstrapModule =
       this.runtimeBootstrapModule ||
       this.resolveRuntimeModuleForBrowser(
-        "@refract/runtime-client/bootstrap",
+        "@nkstack/refract-runtime-client/bootstrap",
         projectRoot
       );
 
@@ -90,7 +93,7 @@ class RefractPluginController {
     });
   }
 
-  private resolvePluginRegistrations(plugins: RefractPlugin[]): ResolvedPluginRegistration[] {
+  private resolvePluginRegistrations(plugins: AnyRefractPlugin[]): ResolvedPluginRegistration[] {
     if (!Array.isArray(plugins) || plugins.length === 0) {
       throw new Error("refract requires at least one plugin registration.");
     }

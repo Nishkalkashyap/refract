@@ -4,7 +4,7 @@ import type {
   RefractSelectionRef,
   RefractServerInvokeRequest,
   RefractServerResult
-} from "@refract/tool-contracts";
+} from "@nkstack/refract-tool-contracts";
 
 const PLUGIN_ENDPOINT = "/@refract/plugin";
 

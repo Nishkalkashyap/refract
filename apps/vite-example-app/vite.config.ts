@@ -1,13 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { dummyPlugin } from "@refract/dummy-action";
-import { tailwindEditorPlugin } from "@refract/tailwind-editor-action";
-import { refract } from "@refract/vite-plugin";
+import { tailwindEditorPlugin } from "@nkstack/refract-tailwind-editor-action";
+import { refract } from "@nkstack/refract-vite-plugin";
 
 export default defineConfig({
   plugins: [
     refract({
-      plugins: [tailwindEditorPlugin, dummyPlugin],
+      plugins: [tailwindEditorPlugin],
       defaultPluginId: "tailwind-editor"
     }),
     react()

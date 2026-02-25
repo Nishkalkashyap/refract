@@ -5,13 +5,18 @@
   "packageManager": "pnpm@10.28.1",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "actions/*"
   ],
   "scripts": {
     "dev": "pnpm --filter vite-example-app dev",
     "build": "pnpm -r --if-present build",
     "lint": "pnpm -r --if-present lint",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "release:check": "pnpm typecheck && pnpm lint && pnpm build",
+    "release:version": "node scripts/sync-release-version.mjs",
+    "release:publish:dry-run": "pnpm -r --filter \"@nkstack/refract-*\" publish --access public --dry-run --no-git-checks",
+    "release:publish": "pnpm run release:check && pnpm -r --filter \"@nkstack/refract-*\" publish --access public --no-git-checks"
   },
   "devDependencies": {
     "@types/node": "latest",
@@ -21,5 +26,6 @@
     "turbo": "latest",
     "typescript": "latest",
     "typescript-eslint": "latest"
-  }
+  },
+  "license": "MIT"
 }

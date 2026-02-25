@@ -4,7 +4,7 @@ import type {
   RefractRuntimePlugin,
   RefractSelectionRef,
   RefractServerResult
-} from "@refract/tool-contracts";
+} from "@nkstack/refract-tool-contracts";
 
 interface UseActionExecutorOptions {
   invokeServer: (

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
-import type { RefractRuntimePlugin } from "@refract/tool-contracts";
+import type { RefractRuntimePlugin } from "@nkstack/refract-tool-contracts";
 
 import type { RuntimeSelectionTarget } from "./runtime-dom";
 

@@ -1,4 +1,4 @@
-import type { RefractSelectionRef } from "@refract/tool-contracts";
+import type { RefractSelectionRef } from "@nkstack/refract-tool-contracts";
 
 const DATA_FILE_ATTR = "data-tool-file";
 const DATA_LINE_ATTR = "data-tool-line";

@@ -1,14 +1,14 @@
 {
-  "name": "@refract/runtime-client",
+  "name": "@nkstack/refract-runtime-client",
   "version": "0.0.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./bootstrap": "./src/bootstrap.ts"
   },
   "dependencies": {
-    "@refract/tool-contracts": "workspace:*",
+    "@nkstack/refract-tool-contracts": "workspace:*",
     "react": "latest",
     "react-dom": "latest"
   },
@@ -20,5 +20,9 @@
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json --noEmit"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT"
 }

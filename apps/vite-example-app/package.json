@@ -11,9 +11,8 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
-    "@refract/dummy-action": "workspace:*",
-    "@refract/tailwind-editor-action": "workspace:*",
-    "@refract/vite-plugin": "workspace:*",
+    "@nkstack/refract-tailwind-editor-action": "workspace:*",
+    "@nkstack/refract-vite-plugin": "workspace:*",
     "react": "latest",
     "react-dom": "latest"
   },
@@ -22,5 +21,6 @@
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",
     "vite": "latest"
-  }
+  },
+  "license": "MIT"
 }

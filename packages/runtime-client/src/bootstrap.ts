@@ -2,7 +2,7 @@ import type {
   RefractRuntimeBootstrapPayload,
   RefractRuntimeManifestPlugin,
   RefractRuntimePlugin
-} from "@refract/tool-contracts";
+} from "@nkstack/refract-tool-contracts";
 
 import { initToolRuntime } from "./index";
 
