@@ -1,0 +1,25 @@
+{
+  "name": "@refract/vite-plugin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@babel/generator": "latest",
+    "@babel/parser": "latest",
+    "@babel/traverse": "latest",
+    "@babel/types": "latest",
+    "@types/babel__generator": "latest",
+    "@types/babel__traverse": "latest",
+    "@refract/dummy-action": "workspace:*",
+    "@refract/runtime-client": "workspace:*",
+    "vite": "latest"
+  },
+  "scripts": {
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json --noEmit"
+  }
+}

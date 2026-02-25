@@ -1,0 +1,24 @@
+{
+  "name": "vite-example-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src vite.config.ts --ext .ts,.tsx",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "@refract/vite-plugin": "workspace:*",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest"
+  }
+}
