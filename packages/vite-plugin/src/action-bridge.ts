@@ -1,31 +1,34 @@
+import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
+import { parse, type ParserPlugin } from "@babel/parser";
 import type {
-  ToolActionOperationRequest,
-  ToolActionOperationResult,
-  ToolSelectionRef,
-  ToolServerOperationHandler
+  RefractFileContext,
+  RefractSelectionRef,
+  RefractServerHandler,
+  RefractServerInvokeRequest,
+  RefractServerResult
 } from "@refract/tool-contracts";
 
-const TOOL_ACTION_PATH = "/@tool/action";
+const REFRACT_PLUGIN_PATH = "/@refract/plugin";
 
-export interface ActionBridgeAction {
+export interface ActionBridgePlugin {
   id: string;
-  serverOperations: Record<string, ToolServerOperationHandler>;
+  serverHandler?: RefractServerHandler;
 }
 
 export interface ActionBridgeOptions {
-  actions: ActionBridgeAction[];
+  plugins: ActionBridgePlugin[];
   getProjectRoot: () => string;
 }
 
 export class ActionBridge {
-  private readonly actions: ActionBridgeAction[];
+  private readonly plugins: ActionBridgePlugin[];
   private readonly getProjectRoot: () => string;
 
   constructor(options: ActionBridgeOptions) {
-    this.actions = options.actions;
+    this.plugins = options.plugins;
     this.getProjectRoot = options.getProjectRoot;
   }
 
@@ -35,7 +38,7 @@ export class ActionBridge {
     next: () => void
   ) => {
     const pathname = (request.url ?? "").split("?")[0];
-    if (request.method !== "POST" || pathname !== TOOL_ACTION_PATH) {
+    if (request.method !== "POST" || pathname !== REFRACT_PLUGIN_PATH) {
       next();
       return;
     }
@@ -50,41 +53,38 @@ export class ActionBridge {
       return;
     }
 
-    const operationRequest = this.parseOperationRequest(payload);
-    if (!operationRequest) {
+    const invokeRequest = this.parseInvokeRequest(payload);
+    if (!invokeRequest) {
       this.respondJson(response, 400, {
         ok: false,
         code: "INVALID_PAYLOAD",
-        message: "Payload must include actionId, operation, selection, and input."
+        message: "Payload must include pluginId, selectionRef, and payload."
       });
       return;
     }
 
-    const action = this.actions.find(
-      (candidate) => candidate.id === operationRequest.actionId
-    );
-    if (!action) {
+    const plugin = this.plugins.find((candidate) => candidate.id === invokeRequest.pluginId);
+    if (!plugin) {
       this.respondJson(response, 404, {
         ok: false,
-        code: "ACTION_NOT_FOUND",
-        message: `Unknown action '${operationRequest.actionId}'.`
+        code: "PLUGIN_NOT_FOUND",
+        message: `Unknown plugin '${invokeRequest.pluginId}'.`
       });
       return;
     }
 
-    const operationHandler = action.serverOperations[operationRequest.operation];
-    if (!operationHandler) {
+    if (!plugin.serverHandler) {
       this.respondJson(response, 404, {
         ok: false,
-        code: "OPERATION_NOT_FOUND",
-        message: `Unknown operation '${operationRequest.operation}' for action '${operationRequest.actionId}'.`
+        code: "SERVER_HANDLER_NOT_FOUND",
+        message: `Plugin '${invokeRequest.pluginId}' does not expose a server handler.`
       });
       return;
     }
 
     const projectRoot = this.getProjectRoot();
     const absoluteFilePath = this.resolveSelectionFilePath(
-      operationRequest.selection.file,
+      invokeRequest.selectionRef.file,
       projectRoot
     );
     if (!absoluteFilePath || !this.isWithinRoot(absoluteFilePath, projectRoot)) {
@@ -96,46 +96,48 @@ export class ActionBridge {
       return;
     }
 
+    const fileContext = await this.createFileContext(absoluteFilePath);
+    if (!fileContext.ok) {
+      this.respondServerResult(response, fileContext.result);
+      return;
+    }
+
     try {
-      const result = await operationHandler({
-        actionId: operationRequest.actionId,
-        operation: operationRequest.operation,
-        selection: operationRequest.selection,
-        input: operationRequest.input,
+      const result = await plugin.serverHandler({
+        selectionRef: invokeRequest.selectionRef,
+        payload: invokeRequest.payload,
         projectRoot,
-        absoluteFilePath
+        file: fileContext.context
       });
 
-      this.respondOperationResult(response, result);
+      this.respondServerResult(response, result);
     } catch {
       this.respondJson(response, 500, {
         ok: false,
-        code: "OPERATION_HANDLER_ERROR",
-        message: "Unhandled exception while executing action operation."
+        code: "SERVER_HANDLER_ERROR",
+        message: "Unhandled exception while executing plugin server handler."
       });
     }
   };
 
-  private parseOperationRequest(
+  private parseInvokeRequest(
     value: Record<string, unknown>
-  ): ToolActionOperationRequest | null {
-    const actionId = typeof value.actionId === "string" ? value.actionId : "";
-    const operation = typeof value.operation === "string" ? value.operation : "";
-    const selection = this.parseSelectionRef(value.selection);
+  ): RefractServerInvokeRequest | null {
+    const pluginId = typeof value.pluginId === "string" ? value.pluginId : "";
+    const selectionRef = this.parseSelectionRef(value.selectionRef);
 
-    if (!actionId || !operation || !selection || !("input" in value)) {
+    if (!pluginId || !selectionRef || !Object.prototype.hasOwnProperty.call(value, "payload")) {
       return null;
     }
 
     return {
-      actionId,
-      operation,
-      selection,
-      input: value.input
+      pluginId,
+      selectionRef,
+      payload: value.payload
     };
   }
 
-  private parseSelectionRef(value: unknown): ToolSelectionRef | null {
+  private parseSelectionRef(value: unknown): RefractSelectionRef | null {
     if (typeof value !== "object" || value === null) {
       return null;
     }
@@ -158,6 +160,7 @@ export class ActionBridge {
     ) {
       return null;
     }
+
     const column = typeof candidate.column === "number" ? candidate.column : undefined;
     if (typeof column === "number" && (!Number.isInteger(column) || column < 1)) {
       return null;
@@ -184,10 +187,75 @@ export class ActionBridge {
     return path.resolve(root, relativeFile);
   }
 
-  private respondOperationResult(
-    response: ServerResponse,
-    result: ToolActionOperationResult
-  ): void {
+  private async createFileContext(
+    absoluteFilePath: string
+  ): Promise<
+    | { ok: true; context: RefractFileContext }
+    | { ok: false; result: RefractServerResult }
+  > {
+    let sourceText: string;
+    try {
+      sourceText = await fs.readFile(absoluteFilePath, "utf8");
+    } catch {
+      return {
+        ok: false,
+        result: {
+          ok: false,
+          code: "FILE_READ_ERROR",
+          message: "Failed to read selected source file.",
+          status: 404
+        }
+      };
+    }
+
+    let ast: unknown;
+    try {
+      ast = parse(sourceText, {
+        sourceType: "module",
+        plugins: this.getParserPlugins(absoluteFilePath)
+      });
+    } catch {
+      return {
+        ok: false,
+        result: {
+          ok: false,
+          code: "AST_PARSE_ERROR",
+          message: "Failed to parse source file AST for plugin server handler.",
+          status: 400
+        }
+      };
+    }
+
+    const context: RefractFileContext = {
+      absolutePath: absoluteFilePath,
+      sourceText,
+      ast,
+      writeSourceText: async (next: string) => {
+        await fs.writeFile(absoluteFilePath, next, "utf8");
+        context.sourceText = next;
+      }
+    };
+
+    return { ok: true, context };
+  }
+
+  private getParserPlugins(absoluteFilePath: string): ParserPlugin[] {
+    if (absoluteFilePath.endsWith(".tsx")) {
+      return ["jsx", "typescript"];
+    }
+
+    if (absoluteFilePath.endsWith(".ts")) {
+      return ["typescript"];
+    }
+
+    if (absoluteFilePath.endsWith(".jsx")) {
+      return ["jsx"];
+    }
+
+    return ["jsx"];
+  }
+
+  private respondServerResult(response: ServerResponse, result: RefractServerResult): void {
     if (result.ok) {
       this.respondJson(response, 200, result);
       return;

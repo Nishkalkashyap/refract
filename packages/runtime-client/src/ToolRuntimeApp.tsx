@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { ToolRuntimeAction, ToolRuntimeInitOptions } from "@refract/tool-contracts";
+import type { RefractRuntimeInitOptions, RefractRuntimePlugin } from "@refract/tool-contracts";
 
 import { ActionMenu, type ActionMenuState } from "./ActionMenu";
 import { PanelHost } from "./PanelHost";
@@ -13,12 +13,12 @@ import { useToolOperationClient } from "./useToolOperationClient";
 
 interface ToolRuntimeAppProps {
   hostElement: HTMLElement;
-  options: ToolRuntimeInitOptions;
+  options: RefractRuntimeInitOptions;
 }
 
 interface PanelSession {
-  action: Extract<ToolRuntimeAction, { type: "panel" }>;
-  selection: RuntimeSelectionTarget["selection"];
+  plugin: RefractRuntimePlugin;
+  selectionRef: RuntimeSelectionTarget["selectionRef"];
   element: HTMLElement;
 }
 
@@ -27,18 +27,18 @@ export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
   const [actionMenu, setActionMenu] = useState<ActionMenuState | null>(null);
   const [panelSession, setPanelSession] = useState<PanelSession | null>(null);
 
-  const invokeOperation = useToolOperationClient();
+  const invokeServer = useToolOperationClient();
 
-  const defaultAction = useMemo(() => {
-    if (options.defaultActionId) {
-      return options.actions.find((candidate) => candidate.id === options.defaultActionId);
+  const defaultPlugin = useMemo(() => {
+    if (options.defaultPluginId) {
+      return options.plugins.find((candidate) => candidate.id === options.defaultPluginId);
     }
 
-    return options.actions[0];
-  }, [options.actions, options.defaultActionId]);
+    return options.plugins[0];
+  }, [options.plugins, options.defaultPluginId]);
 
-  const executeAction = useActionExecutor({
-    invokeOperation,
+  const executePlugin = useActionExecutor({
+    invokeServer,
     openPanel: (session) => setPanelSession(session),
     closePanel: () => setPanelSession(null),
     closeSelectMode: () => setSelectMode(false),
@@ -61,11 +61,11 @@ export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
     enabled: selectMode,
     hostElement,
     onPrimarySelect: (target) => {
-      if (!defaultAction) {
+      if (!defaultPlugin) {
         return;
       }
 
-      executeAction(defaultAction, target);
+      executePlugin(defaultPlugin, target);
     },
     onContextSelect: (target, position) => {
       setActionMenu({
@@ -92,14 +92,14 @@ export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
       {actionMenu ? (
         <ActionMenu
           state={actionMenu}
-          actions={options.actions}
-          onSelect={(actionId) => {
-            const action = options.actions.find((candidate) => candidate.id === actionId);
-            if (!action) {
+          plugins={options.plugins}
+          onSelect={(pluginId) => {
+            const plugin = options.plugins.find((candidate) => candidate.id === pluginId);
+            if (!plugin) {
               return;
             }
 
-            executeAction(action, actionMenu.target);
+            executePlugin(plugin, actionMenu.target);
           }}
         />
       ) : null}
@@ -110,7 +110,7 @@ export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
           onClose={() => {
             setPanelSession(null);
           }}
-          invokeOperation={invokeOperation}
+          invokeServer={invokeServer}
         />
       ) : null}
     </div>

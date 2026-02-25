@@ -1,12 +1,16 @@
-import type { ToolRuntimeCommandAction } from "@refract/tool-contracts";
+import {
+  defineRefractBrowserPlugin,
+  type RefractRuntimePlugin
+} from "@refract/tool-contracts";
 
-export const dummyRuntimeAction: ToolRuntimeCommandAction = {
+const dummyBrowserPlugin: RefractRuntimePlugin = defineRefractBrowserPlugin(import.meta.url, {
   id: "dummy",
   label: "Log Action",
-  type: "command",
-  run({ selection }) {
+  inBrowserHandler({ selectionRef }) {
     console.log(
-      `action taken on ${selection.tagName} element with file ${selection.file}, line number ${selection.line}`
+      `action taken on ${selectionRef.tagName} element with file ${selectionRef.file}, line number ${selectionRef.line}`
     );
   }
-};
+});
+
+export default dummyBrowserPlugin;

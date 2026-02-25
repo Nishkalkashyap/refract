@@ -8,21 +8,21 @@ Refract is composed of four primary layers:
 
 1. Vite plugin (`@refract/vite-plugin`)
 2. Browser runtime (`@refract/runtime-client`)
-3. Action modules (`actions/*`)
+3. Plugin modules (`actions/*`)
 4. Shared contracts (`@refract/tool-contracts`)
 
 Flow at a high level:
 
 1. Vite plugin instruments JSX with source metadata (`data-tool-file`, `data-tool-line`, `data-tool-column`).
-2. Vite plugin injects an inline module script in dev HTML that bootstraps runtime from a manifest.
-3. Runtime handles selection UX and dispatches actions.
-4. Panel/command actions may call `POST /@tool/action` for server-side operations.
-5. Server operation handlers (provided by action modules) mutate source as needed.
+2. Vite plugin injects an inline module script in dev HTML that bootstraps runtime from a plugin manifest.
+3. Runtime handles selection UX and dispatches plugin `inBrowserHandler`.
+4. Browser plugin code can call `server.invoke(payload)`.
+5. Vite plugin bridge dispatches to plugin-specific `serverHandler`.
 
 ## 2. Core Technologies
 
 - Vite plugin hooks: `transform`, `transformIndexHtml`, `configureServer`
-- Babel parser/traverse/generator for JSX AST instrumentation and updates
+- Babel parser/traverse/generator for JSX AST instrumentation and source updates
 - React + ReactDOM for runtime UI and panel rendering
 - TypeScript across all packages with shared contract types
 - pnpm workspaces + Turbo monorepo structure
@@ -33,20 +33,21 @@ Flow at a high level:
 
 Important contract groups:
 
-- Selection model: `ToolSelectionRef`
-- Runtime actions:
-  - `ToolRuntimeCommandAction`
-  - `ToolRuntimePanelAction`
-  - `ToolRuntimePanelProps`
+- Selection model: `RefractSelectionRef`
+- Runtime/plugin model:
+  - `RefractRuntimePlugin`
+  - `RefractBrowserContext`
+  - `RefractPanelProps`
 - Server bridge:
-  - `ToolActionOperationRequest`
-  - `ToolActionOperationResult`
-  - `ToolServerOperationHandler`
-- Registration model: `ToolActionRegistration`
+  - `RefractServerInvokeRequest`
+  - `RefractServerResult`
+  - `RefractServerContext`
+  - `RefractServerHandler`
+- Public plugin registration model: `RefractPlugin`
 
-This prevents runtime/plugin/action packages from drifting apart.
+This prevents runtime/plugin/server packages from drifting apart.
 
-## 4. Plugin Architecture
+## 4. Vite Plugin Architecture
 
 `packages/vite-plugin/src/index.ts` responsibilities:
 
@@ -57,17 +58,17 @@ This prevents runtime/plugin/action packages from drifting apart.
 2. Runtime injection
 - Injects an inline `<script type="module">` in dev HTML.
 - Calls `bootstrapToolRuntime(...)` from `@refract/runtime-client/bootstrap`.
-- Passes action manifest data (`id`, `runtimeModule`, `runtimeExport`, `defaultActionId`).
+- Passes plugin manifest data (`id`, `browserModule`, `defaultPluginId`).
 
-3. Generic action bridge
-- Exposes `POST /@tool/action`.
+3. Generic plugin bridge
+- Exposes `POST /@refract/plugin`.
 - Validates payload:
-  - `actionId`
-  - `operation`
-  - `selection`
-  - `input`
+  - `pluginId`
+  - `selectionRef`
+  - `payload`
 - Enforces file path safety (must resolve inside project root).
-- Dispatches to action-specific server handlers.
+- Builds file context (`absolutePath`, `sourceText`, parsed `ast`, `writeSourceText`).
+- Dispatches to plugin-specific `serverHandler`.
 
 ## 5. Runtime Architecture (React)
 
@@ -77,39 +78,51 @@ This prevents runtime/plugin/action packages from drifting apart.
 - `useSelectionMode.ts`: mouse/click/context/escape selection behavior
 - `SelectionOverlay.tsx`: hovered element highlight
 - `RuntimeFab.tsx`: select mode toggle
-- `ActionMenu.tsx`: right-click action chooser
-- `PanelHost.tsx`: renders panel actions
-- `useActionExecutor.ts`: unified action invocation logic
-- `useToolOperationClient.ts`: typed client for `/@tool/action`
+- `ActionMenu.tsx`: right-click plugin chooser
+- `PanelHost.tsx`: renders plugin panel UI
+- `useActionExecutor.ts`: unified plugin invocation logic
+- `useToolOperationClient.ts`: typed client for `/@refract/plugin`
 - `runtime-dom.ts`: DOM/metadata extraction utilities
 - `runtime-styles.ts`: runtime Shadow DOM styles
 
-Design constraint:
-- Runtime core does not hardcode action IDs.
-- Runtime branches by action type (`command` vs `panel`).
+Design constraints:
+- Runtime core does not hardcode plugin IDs.
+- Runtime always executes `plugin.inBrowserHandler(...)`.
+- Panel rendering is opt-in via `ctx.ui.openPanel()` and plugin `Panel`.
 
-## 6. Action Module Pattern
+## 6. Plugin Module Pattern
 
-Each action module exports a `ToolActionRegistration`:
+Each plugin package exports a `RefractPlugin` from its package entrypoint.
 
-- `id`
-- `runtimeModule`
-- `runtimeExport`
-- optional `serverOperations`
+Typical structure:
 
-### Dummy Action
+1. Browser runtime module (`runtime.ts` / `runtime.tsx`)
+- Exports default browser plugin built with:
+  - `defineRefractBrowserPlugin(import.meta.url, { ... })`
+- Implements:
+  - `id`, `label`
+  - `inBrowserHandler`
+  - optional `Panel`
 
-- Runtime type: command
-- Behavior: logs selected element + source metadata
-- No server operations
+2. Server module (`server.ts`) (optional)
+- Exports `serverHandler` with signature:
+  - `(ctx: RefractServerContext<Payload>) => RefractServerResult`
 
-### Tailwind Editor Action
+3. Package entrypoint (`index.ts`)
+- Exports final plugin, optionally composed with:
+  - `withRefractServerHandler(browserPlugin, serverHandler)`
 
-- Runtime type: panel
-- UI: toolbar adapter component with `value/onChange`
-- Client behavior:
+### Dummy Plugin
+
+- Browser behavior: logs selected element + source metadata
+- No server handler
+
+### Tailwind Editor Plugin
+
+- Browser behavior: opens panel
+- Panel behavior:
   - optimistic preview (`element.className = next`)
-  - debounced server operation call (`updateClassName`)
+  - debounced `server.invoke({ kind: "updateClassName", nextClassName })`
 - Server behavior:
   - AST-based update of static `className`
   - inserts `className` if absent
@@ -117,31 +130,32 @@ Each action module exports a `ToolActionRegistration`:
 
 ## 7. Mutation Path and Safety
 
-Mutation requests are action-scoped:
+Mutation requests are plugin-scoped:
 
-- Endpoint: `POST /@tool/action`
-- Handler selected by `actionId + operation`
-- Plugin computes absolute path from selection and validates root containment
+- Endpoint: `POST /@refract/plugin`
+- Handler selected by `pluginId`
+- Plugin server handler decides behavior using typed `payload.kind`
+- Plugin bridge validates source file containment under project root
 
 Typical error responses include:
 
 - `INVALID_PAYLOAD`
-- `ACTION_NOT_FOUND`
-- `OPERATION_NOT_FOUND`
+- `PLUGIN_NOT_FOUND`
+- `SERVER_HANDLER_NOT_FOUND`
 - `FORBIDDEN_PATH`
-- action-specific errors (for example `UNSUPPORTED_DYNAMIC_CLASSNAME`)
+- plugin-specific errors (for example `UNSUPPORTED_DYNAMIC_CLASSNAME`)
 
 ## 8. Extensibility Model
 
-To add a new action:
+To add a new plugin:
 
-1. Create action package under `actions/<name>`.
-2. Implement runtime action (`command` or `panel`).
-3. Add optional server operation handlers.
-4. Export `ToolActionRegistration`.
-5. Register action in app Vite config via `toolPlugin({ actions: [...] })`.
+1. Create plugin package under `actions/<name>`.
+2. Implement browser plugin (`inBrowserHandler` and optional `Panel`).
+3. Add optional `serverHandler`.
+4. Export final `RefractPlugin`.
+5. Register in app Vite config via `refract({ plugins: [...] })`.
 
-No runtime-core edits are required for standard action additions.
+No runtime-core edits are required for standard plugin additions.
 
 ## 9. Current Constraints
 

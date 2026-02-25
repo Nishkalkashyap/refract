@@ -1,11 +1,11 @@
-import type { ToolSelectionRef } from "@refract/tool-contracts";
+import type { RefractSelectionRef } from "@refract/tool-contracts";
 
 const DATA_FILE_ATTR = "data-tool-file";
 const DATA_LINE_ATTR = "data-tool-line";
 const DATA_COLUMN_ATTR = "data-tool-column";
 
 export interface RuntimeSelectionTarget {
-  selection: ToolSelectionRef;
+  selectionRef: RefractSelectionRef;
   element: HTMLElement;
 }
 
@@ -35,7 +35,7 @@ export function toSelectionTarget(element: HTMLElement): RuntimeSelectionTarget 
 
   return {
     element,
-    selection: {
+    selectionRef: {
       file,
       line,
       tagName: element.tagName.toLowerCase(),

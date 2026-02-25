@@ -60,7 +60,7 @@ export function SelectionOverlay({ enabled, hoveredTarget }: SelectionOverlayPro
           top: Math.max(8, labelTop)
         }}
       >
-        {hoveredTarget.selection.file}:{hoveredTarget.selection.line}
+        {hoveredTarget.selectionRef.file}:{hoveredTarget.selectionRef.line}
       </div>
     </>
   );

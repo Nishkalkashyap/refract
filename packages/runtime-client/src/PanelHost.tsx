@@ -1,55 +1,53 @@
 import type { ReactNode } from "react";
 
 import type {
-  ToolActionOperationResult,
-  ToolRuntimePanelAction,
-  ToolRuntimePanelProps,
-  ToolSelectionRef
+  RefractPanelProps,
+  RefractRuntimePlugin,
+  RefractSelectionRef,
+  RefractServerResult
 } from "@refract/tool-contracts";
 
 interface PanelSession {
-  action: ToolRuntimePanelAction;
-  selection: ToolSelectionRef;
+  plugin: RefractRuntimePlugin;
+  selectionRef: RefractSelectionRef;
   element: HTMLElement;
 }
 
 interface PanelHostProps {
   session: PanelSession;
   onClose: () => void;
-  invokeOperation: (
-    actionId: string,
-    operation: string,
-    selection: ToolSelectionRef,
-    input: unknown
-  ) => Promise<ToolActionOperationResult>;
+  invokeServer: (
+    pluginId: string,
+    selectionRef: RefractSelectionRef,
+    payload: unknown
+  ) => Promise<RefractServerResult>;
 }
 
-export function PanelHost({ session, onClose, invokeOperation }: PanelHostProps) {
-  const Panel = session.action.Panel as (props: ToolRuntimePanelProps) => ReactNode;
+export function PanelHost({ session, onClose, invokeServer }: PanelHostProps) {
+  if (!session.plugin.Panel) {
+    return null;
+  }
+
+  const Panel = session.plugin.Panel as (props: RefractPanelProps) => ReactNode;
 
   return (
     <div className="panel-host">
       <div className="panel-shell">
         <div className="panel-head">
           <div className="panel-title">
-            {session.action.label} · {session.selection.file}:{session.selection.line}
+            {session.plugin.label} · {session.selectionRef.file}:{session.selectionRef.line}
           </div>
           <button type="button" className="panel-close" onClick={onClose}>
             Close
           </button>
         </div>
         <Panel
-          key={`${session.selection.file}:${session.selection.line}:${session.selection.column ?? 0}`}
-          selection={session.selection}
+          key={`${session.selectionRef.file}:${session.selectionRef.line}:${session.selectionRef.column ?? 0}`}
+          selectionRef={session.selectionRef}
           element={session.element}
           closePanel={onClose}
-          invokeOperation={(operation, input) =>
-            invokeOperation(session.action.id, operation, session.selection, input)
-          }
-          preview={{
-            setClassName: (next) => {
-              session.element.className = next;
-            }
+          server={{
+            invoke: (payload) => invokeServer(session.plugin.id, session.selectionRef, payload)
           }}
         />
       </div>

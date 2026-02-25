@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
-import type { ToolRuntimeAction } from "@refract/tool-contracts";
+import type { RefractRuntimePlugin } from "@refract/tool-contracts";
 
 import type { RuntimeSelectionTarget } from "./runtime-dom";
 
@@ -12,11 +12,11 @@ export interface ActionMenuState {
 
 interface ActionMenuProps {
   state: ActionMenuState;
-  actions: ToolRuntimeAction[];
-  onSelect: (actionId: string) => void;
+  plugins: RefractRuntimePlugin[];
+  onSelect: (pluginId: string) => void;
 }
 
-export function ActionMenu({ state, actions, onSelect }: ActionMenuProps) {
+export function ActionMenu({ state, plugins, onSelect }: ActionMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState({ left: state.x, top: state.y });
 
@@ -34,7 +34,7 @@ export function ActionMenu({ state, actions, onSelect }: ActionMenuProps) {
       left: Math.min(state.x, maxLeft),
       top: Math.min(state.y, maxTop)
     });
-  }, [state.x, state.y, actions.length]);
+  }, [state.x, state.y, plugins.length]);
 
   return (
     <div
@@ -43,17 +43,17 @@ export function ActionMenu({ state, actions, onSelect }: ActionMenuProps) {
       style={{ left: position.left, top: position.top }}
     >
       <div className="action-menu-header">
-        {state.target.selection.file}:{state.target.selection.line}
+        {state.target.selectionRef.file}:{state.target.selectionRef.line}
       </div>
       <div className="action-menu-list">
-        {actions.map((action) => (
+        {plugins.map((plugin) => (
           <button
-            key={action.id}
+            key={plugin.id}
             type="button"
             className="action-menu-item"
-            onClick={() => onSelect(action.id)}
+            onClick={() => onSelect(plugin.id)}
           >
-            {action.label}
+            {plugin.label}
           </button>
         ))}
       </div>

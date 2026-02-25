@@ -1,16 +1,17 @@
-import type { ToolServerOperationHandler } from "@refract/tool-contracts";
+import type { RefractServerHandler } from "@refract/tool-contracts";
 
+import type { TailwindEditorInvokePayload } from "./types";
 import { ClassNameFileUpdater } from "./update-classname.ts";
 
 class TailwindEditorServer {
   private readonly classNameFileUpdater = new ClassNameFileUpdater();
 
-  private readonly handleUpdateClassName: ToolServerOperationHandler = async ({
-    selection,
-    input,
-    absoluteFilePath
+  readonly handler: RefractServerHandler<TailwindEditorInvokePayload> = async ({
+    selectionRef,
+    payload,
+    file
   }) => {
-    if (!/\.(tsx|jsx)$/.test(absoluteFilePath)) {
+    if (!/\.(tsx|jsx)$/.test(file.absolutePath)) {
       return {
         ok: false,
         code: "UNSUPPORTED_FILE",
@@ -19,36 +20,37 @@ class TailwindEditorServer {
       };
     }
 
-    const nextClassName = this.getNextClassName(input);
-    if (nextClassName === null) {
+    if (!this.isInvokePayload(payload)) {
       return {
         ok: false,
         code: "INVALID_INPUT",
-        message: "Expected input.nextClassName to be a string.",
+        message: "Expected payload.kind='updateClassName' and payload.nextClassName as a string.",
         status: 400
       };
     }
 
     return this.classNameFileUpdater.update({
-      absoluteFilePath,
-      line: selection.line,
-      ...(typeof selection.column === "number" ? { column: selection.column } : {}),
-      nextClassName
+      absoluteFilePath: file.absolutePath,
+      line: selectionRef.line,
+      ...(typeof selectionRef.column === "number" ? { column: selectionRef.column } : {}),
+      nextClassName: payload.nextClassName
     });
   };
 
-  readonly operations: Record<string, ToolServerOperationHandler> = {
-    updateClassName: this.handleUpdateClassName
-  };
-
-  private getNextClassName(input: unknown): string | null {
-    if (typeof input !== "object" || input === null) {
-      return null;
+  private isInvokePayload(value: unknown): value is TailwindEditorInvokePayload {
+    if (typeof value !== "object" || value === null) {
+      return false;
     }
 
-    const candidate = (input as { nextClassName?: unknown }).nextClassName;
-    return typeof candidate === "string" ? candidate : null;
+    const candidate = value as {
+      kind?: unknown;
+      nextClassName?: unknown;
+    };
+
+    return (
+      candidate.kind === "updateClassName" && typeof candidate.nextClassName === "string"
+    );
   }
 }
 
-export const tailwindEditorServerOperations = new TailwindEditorServer().operations;
+export const tailwindEditorServerHandler = new TailwindEditorServer().handler;

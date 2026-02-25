@@ -5,7 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./runtime": "./src/runtime.tsx"
+    "./runtime": "./src/runtime.ts"
   },
   "dependencies": {
     "@babel/generator": "latest",

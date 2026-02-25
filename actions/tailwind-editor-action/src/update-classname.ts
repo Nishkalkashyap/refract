@@ -4,7 +4,7 @@ import generateModule from "@babel/generator";
 import { parse } from "@babel/parser";
 import traverseModule, { type NodePath } from "@babel/traverse";
 import * as t from "@babel/types";
-import type { ToolActionOperationResult } from "@refract/tool-contracts";
+import type { RefractServerResult } from "@refract/tool-contracts";
 
 const generate = getDefaultExport(generateModule);
 const traverse = getDefaultExport(traverseModule);
@@ -16,10 +16,10 @@ interface UpdateClassNameRequest {
   nextClassName: string;
 }
 
-type OperationFailure = Extract<ToolActionOperationResult, { ok: false }>;
+type OperationFailure = Extract<RefractServerResult, { ok: false }>;
 
 export class ClassNameFileUpdater {
-  async update(request: UpdateClassNameRequest): Promise<ToolActionOperationResult> {
+  async update(request: UpdateClassNameRequest): Promise<RefractServerResult> {
     const source = await this.readSourceFile(request.absoluteFilePath);
     if (!source.ok) {
       return source;
@@ -113,7 +113,7 @@ export class ClassNameFileUpdater {
   private upsertClassName(
     node: t.JSXOpeningElement,
     nextClassName: string
-  ): ToolActionOperationResult {
+  ): RefractServerResult {
     const classNameAttribute = node.attributes.find(
       (attribute): attribute is t.JSXAttribute =>
         attribute.type === "JSXAttribute" &&
@@ -169,7 +169,7 @@ export class ClassNameFileUpdater {
 
 export async function updateClassNameInFile(
   request: UpdateClassNameRequest
-): Promise<ToolActionOperationResult> {
+): Promise<RefractServerResult> {
   return new ClassNameFileUpdater().update(request);
 }
 

@@ -1,9 +1,9 @@
-import type { ToolRuntimeBootstrapPayload } from "@refract/tool-contracts";
+import type { RefractRuntimeBootstrapPayload } from "@refract/tool-contracts";
 import type { HtmlTagDescriptor } from "vite";
 
 export class RuntimeInjection {
   createTag(
-    payload: ToolRuntimeBootstrapPayload,
+    payload: RefractRuntimeBootstrapPayload,
     bootstrapModule: string
   ): HtmlTagDescriptor {
     return {

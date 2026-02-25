@@ -1,53 +1,55 @@
 import path from "node:path";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 import type {
-  ToolActionRegistration,
-  ToolRuntimeBootstrapPayload,
-  ToolRuntimeManifestAction,
-  ToolServerOperationHandler
+  RefractPlugin,
+  RefractRuntimeBootstrapPayload,
+  RefractServerHandler
 } from "@refract/tool-contracts";
+import { getRefractBrowserModuleUrl } from "@refract/tool-contracts";
 import type { Plugin } from "vite";
 
-import { ActionBridge, type ActionBridgeAction } from "./action-bridge.ts";
+import { ActionBridge, type ActionBridgePlugin } from "./action-bridge.ts";
 import { JsxInstrumentation } from "./jsx-instrumentation.ts";
 import { RuntimeInjection } from "./runtime-injection.ts";
 
-interface ResolvedActionRegistration extends ToolRuntimeManifestAction, ActionBridgeAction {
-  serverOperations: Record<string, ToolServerOperationHandler>;
+interface ResolvedPluginRegistration extends ActionBridgePlugin {
+  browserModuleUrl: string;
+  serverHandler?: RefractServerHandler;
 }
 
-export interface ToolPluginOptions {
-  actions: ToolActionRegistration[];
-  defaultActionId?: string;
+export interface RefractVitePluginOptions {
+  plugins: RefractPlugin[];
+  defaultPluginId?: string;
 }
 
-class ToolPluginController {
-  private readonly actions: ResolvedActionRegistration[];
-  private readonly defaultActionId: string | undefined;
+class RefractPluginController {
+  private readonly plugins: ResolvedPluginRegistration[];
+  private readonly defaultPluginId: string | undefined;
   private readonly actionBridge: ActionBridge;
   private readonly jsxInstrumentation: JsxInstrumentation;
   private readonly runtimeInjection: RuntimeInjection;
 
   private root = "";
-  private runtimePayload: ToolRuntimeBootstrapPayload | null = null;
+  private runtimePayload: RefractRuntimeBootstrapPayload | null = null;
   private runtimeBootstrapModule = "";
 
-  constructor(private readonly options: ToolPluginOptions) {
-    this.actions = this.resolveActionRegistrations(options.actions);
-    this.defaultActionId = options.defaultActionId ?? this.actions[0]?.id;
+  constructor(options: RefractVitePluginOptions) {
+    this.plugins = this.resolvePluginRegistrations(options.plugins);
+    this.defaultPluginId = options.defaultPluginId ?? this.plugins[0]?.id;
 
     if (
-      this.defaultActionId &&
-      !this.actions.some((action) => action.id === this.defaultActionId)
+      this.defaultPluginId &&
+      !this.plugins.some((plugin) => plugin.id === this.defaultPluginId)
     ) {
       throw new Error(
-        `toolPlugin defaultActionId '${this.defaultActionId}' is not present in registered actions.`
+        `refract defaultPluginId '${this.defaultPluginId}' is not present in registered plugins.`
       );
     }
 
     this.actionBridge = new ActionBridge({
-      actions: this.actions,
+      plugins: this.plugins,
       getProjectRoot: () => this.root
     });
     this.jsxInstrumentation = new JsxInstrumentation();
@@ -88,72 +90,82 @@ class ToolPluginController {
     });
   }
 
-  private resolveActionRegistrations(
-    actions: ToolActionRegistration[]
-  ): ResolvedActionRegistration[] {
-    if (!Array.isArray(actions) || actions.length === 0) {
-      throw new Error("toolPlugin requires at least one action registration.");
+  private resolvePluginRegistrations(plugins: RefractPlugin[]): ResolvedPluginRegistration[] {
+    if (!Array.isArray(plugins) || plugins.length === 0) {
+      throw new Error("refract requires at least one plugin registration.");
     }
 
     const seenIds = new Set<string>();
 
-    return actions.map((action) => {
-      if (!action || typeof action !== "object") {
-        throw new Error("toolPlugin received an invalid action registration.");
+    return plugins.map((plugin) => {
+      if (!plugin || typeof plugin !== "object") {
+        throw new Error("refract received an invalid plugin registration.");
       }
 
-      if (!action.id || seenIds.has(action.id)) {
-        throw new Error(`toolPlugin action id '${action.id}' is missing or duplicated.`);
+      if (!plugin.id || seenIds.has(plugin.id)) {
+        throw new Error(`refract plugin id '${plugin.id}' is missing or duplicated.`);
       }
 
-      seenIds.add(action.id);
+      seenIds.add(plugin.id);
 
-      if (!action.runtimeModule || !action.runtimeExport) {
+      if (!plugin.label || typeof plugin.inBrowserHandler !== "function") {
         throw new Error(
-          `toolPlugin action '${action.id}' is missing runtime module metadata.`
+          `refract plugin '${plugin.id}' must define label and inBrowserHandler.`
+        );
+      }
+
+      const browserModuleUrl = getRefractBrowserModuleUrl(plugin);
+      if (!browserModuleUrl) {
+        throw new Error(
+          `refract plugin '${plugin.id}' is missing browser module metadata. Export browser plugins using defineRefractBrowserPlugin(import.meta.url, plugin).`
         );
       }
 
       return {
-        id: action.id,
-        runtimeModule: action.runtimeModule,
-        runtimeExport: action.runtimeExport,
-        serverOperations: action.serverOperations ?? {}
+        id: plugin.id,
+        browserModuleUrl,
+        serverHandler: plugin.serverHandler
       };
     });
   }
 
-  private createRuntimePayload(projectRoot: string): ToolRuntimeBootstrapPayload {
+  private createRuntimePayload(projectRoot: string): RefractRuntimeBootstrapPayload {
     return {
-      actions: this.actions.map((action) => ({
-        id: action.id,
-        runtimeModule: this.resolveRuntimeModuleForBrowser(action.runtimeModule, projectRoot),
-        runtimeExport: action.runtimeExport
+      plugins: this.plugins.map((plugin) => ({
+        id: plugin.id,
+        browserModule: this.resolveRuntimeModuleForBrowser(
+          plugin.browserModuleUrl,
+          projectRoot
+        )
       })),
-      ...(this.defaultActionId ? { defaultActionId: this.defaultActionId } : {})
+      ...(this.defaultPluginId ? { defaultPluginId: this.defaultPluginId } : {})
     };
   }
 
-  private resolveRuntimeModuleForBrowser(runtimeModule: string, projectRoot: string): string {
+  private resolveRuntimeModuleForBrowser(moduleReference: string, projectRoot: string): string {
     if (
-      runtimeModule.startsWith("/@fs/") ||
-      runtimeModule.startsWith("/@id/") ||
-      runtimeModule.startsWith("http://") ||
-      runtimeModule.startsWith("https://")
+      moduleReference.startsWith("/@fs/") ||
+      moduleReference.startsWith("/@id/") ||
+      moduleReference.startsWith("http://") ||
+      moduleReference.startsWith("https://")
     ) {
-      return runtimeModule;
+      return moduleReference;
     }
 
-    if (runtimeModule.startsWith("./") || runtimeModule.startsWith("../")) {
-      return this.toViteFsPath(path.resolve(projectRoot, runtimeModule));
+    if (moduleReference.startsWith("file://")) {
+      return this.toViteFsPath(fileURLToPath(moduleReference));
     }
 
-    if (path.isAbsolute(runtimeModule)) {
-      return this.toViteFsPath(runtimeModule);
+    if (moduleReference.startsWith("./") || moduleReference.startsWith("../")) {
+      return this.toViteFsPath(path.resolve(projectRoot, moduleReference));
+    }
+
+    if (path.isAbsolute(moduleReference)) {
+      return this.toViteFsPath(moduleReference);
     }
 
     const projectRequire = createRequire(path.join(projectRoot, "package.json"));
-    return this.toViteFsPath(projectRequire.resolve(runtimeModule));
+    return this.toViteFsPath(projectRequire.resolve(moduleReference));
   }
 
   private toViteFsPath(absolutePath: string): string {
@@ -161,11 +173,11 @@ class ToolPluginController {
   }
 }
 
-export function toolPlugin(options: ToolPluginOptions): Plugin {
-  const controller = new ToolPluginController(options);
+export function refract(options: RefractVitePluginOptions): Plugin {
+  const controller = new RefractPluginController(options);
 
   return {
-    name: "refract-tool-plugin",
+    name: "refract-plugin",
     apply: "serve",
     enforce: "pre",
     configResolved(config) {

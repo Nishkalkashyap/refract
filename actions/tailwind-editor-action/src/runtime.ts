@@ -1,18 +1,23 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createElement, Fragment, useCallback, useEffect, useRef, useState } from "react";
 
-import type {
-  ToolActionOperationResult,
-  ToolRuntimePanelAction,
-  ToolRuntimePanelProps
+import {
+  defineRefractBrowserPlugin,
+  type RefractPanelProps,
+  type RefractRuntimePlugin,
+  type RefractServerResult
 } from "@refract/tool-contracts";
 
-import { TailwindEditorToolbarAdapter } from "./tailwind-toolbar-adapter";
+import type { TailwindEditorInvokePayload } from "./types";
+import { TailwindEditorToolbarAdapter } from "./tailwind-toolbar-adapter.ts";
 
 const SAVE_DEBOUNCE_MS = 250;
 
 type SaveState = "idle" | "saving" | "error";
 
-function TailwindEditorPanel({ element, invokeOperation, preview }: ToolRuntimePanelProps) {
+function TailwindEditorPanel({
+  element,
+  server
+}: RefractPanelProps<TailwindEditorInvokePayload>) {
   const [value, setValue] = useState(() => element.className ?? "");
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -21,35 +26,33 @@ function TailwindEditorPanel({ element, invokeOperation, preview }: ToolRuntimeP
   const pendingValueRef = useRef<string | null>(null);
   const requestVersionRef = useRef(0);
   const mountedRef = useRef(true);
-  const invokeOperationRef = useRef(invokeOperation);
+  const invokeRef = useRef(server.invoke);
 
   useEffect(() => {
-    invokeOperationRef.current = invokeOperation;
-  }, [invokeOperation]);
+    invokeRef.current = server.invoke;
+  }, [server]);
 
-  const persistNow = useCallback(
-    async (next: string) => {
-      const requestVersion = ++requestVersionRef.current;
+  const persistNow = useCallback(async (next: string) => {
+    const requestVersion = ++requestVersionRef.current;
 
-      const result: ToolActionOperationResult = await invokeOperationRef.current("updateClassName", {
-        nextClassName: next
-      });
+    const result: RefractServerResult = await invokeRef.current({
+      kind: "updateClassName",
+      nextClassName: next
+    });
 
-      if (!mountedRef.current || requestVersion !== requestVersionRef.current) {
-        return;
-      }
+    if (!mountedRef.current || requestVersion !== requestVersionRef.current) {
+      return;
+    }
 
-      if (result.ok) {
-        setSaveState("idle");
-        setErrorMessage("");
-        return;
-      }
+    if (result.ok) {
+      setSaveState("idle");
+      setErrorMessage("");
+      return;
+    }
 
-      setSaveState("error");
-      setErrorMessage(result.message);
-    },
-    []
-  );
+    setSaveState("error");
+    setErrorMessage(result.message);
+  }, []);
 
   const schedulePersist = useCallback(
     (next: string) => {
@@ -76,10 +79,10 @@ function TailwindEditorPanel({ element, invokeOperation, preview }: ToolRuntimeP
       setValue(next);
       setSaveState("saving");
       setErrorMessage("");
-      preview.setClassName(next);
+      element.className = next;
       schedulePersist(next);
     },
-    [preview, schedulePersist]
+    [element, schedulePersist]
   );
 
   useEffect(() => {
@@ -95,7 +98,8 @@ function TailwindEditorPanel({ element, invokeOperation, preview }: ToolRuntimeP
       const pendingValue = pendingValueRef.current;
       pendingValueRef.current = null;
       if (pendingValue !== null) {
-        void invokeOperationRef.current("updateClassName", {
+        void invokeRef.current({
+          kind: "updateClassName",
           nextClassName: pendingValue
         });
       }
@@ -109,19 +113,29 @@ function TailwindEditorPanel({ element, invokeOperation, preview }: ToolRuntimeP
         ? "Saving..."
         : errorMessage || "Failed to persist className changes.";
 
-  return (
-    <>
-      <TailwindEditorToolbarAdapter value={value} onChange={handleChange} />
-      <div className="tool-panel-status" data-state={saveState}>
-        {statusText}
-      </div>
-    </>
+  return createElement(
+    Fragment,
+    null,
+    createElement(TailwindEditorToolbarAdapter, { value, onChange: handleChange }),
+    createElement(
+      "div",
+      {
+        className: "tool-panel-status",
+        "data-state": saveState
+      },
+      statusText
+    )
   );
 }
 
-export const tailwindEditorRuntimeAction: ToolRuntimePanelAction = {
-  id: "tailwind-editor",
-  label: "Tailwind Editor",
-  type: "panel",
-  Panel: TailwindEditorPanel
-};
+const tailwindEditorBrowserPlugin: RefractRuntimePlugin<TailwindEditorInvokePayload> =
+  defineRefractBrowserPlugin(import.meta.url, {
+    id: "tailwind-editor",
+    label: "Tailwind Editor",
+    inBrowserHandler({ ui }) {
+      ui.openPanel();
+    },
+    Panel: TailwindEditorPanel
+  });
+
+export default tailwindEditorBrowserPlugin;

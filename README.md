@@ -2,7 +2,7 @@
 
 Refract is a development-only visual design mode for React + Vite apps.
 
-It lets you pick rendered elements in the browser, map them back to source (`file + line + column`), and run extensible actions on them. The current built-in actions include:
+It lets you pick rendered elements in the browser, map them back to source (`file + line + column`), and run extensible plugins on them. The current built-in plugins include:
 
 - `tailwind-editor`: opens an editor panel for class updates
 - `dummy`: logs selected element metadata
@@ -11,26 +11,26 @@ It lets you pick rendered elements in the browser, map them back to source (`fil
 
 - Injects source metadata into JSX elements during Vite dev transforms
 - Injects an inline runtime bootstrap script into dev HTML
-- Provides selection mode with hover highlight + right-click action menu
-- Supports command and panel-style actions
-- Supports action-driven server operations through a generic dev bridge (`POST /@tool/action`)
+- Provides selection mode with hover highlight + right-click plugin menu
+- Supports plugin-owned browser handlers and optional panel UI
+- Supports plugin-driven server handlers through a generic dev bridge (`POST /@refract/plugin`)
 - Persists Tailwind class updates to source files via AST-based edits
 
 ## Key Characteristics
 
 - Development mode only (`apply: "serve"` in Vite plugin)
 - No production injection or runtime overhead in build output
-- Extensible action system via explicit plugin registration
-- Shared contracts package to keep runtime/plugin/action APIs aligned
+- Extensible plugin system via explicit plugin registration
+- Shared contracts package to keep runtime/plugin/server APIs aligned
 
 ## Repository Layout
 
-- `apps/vite-example-app`: demo app using the plugin
-- `packages/vite-plugin`: Vite plugin (JSX instrumentation + runtime injection + action bridge)
+- `apps/vite-example-app`: demo app using Refract
+- `packages/vite-plugin`: Vite plugin (JSX instrumentation + runtime injection + plugin bridge)
 - `packages/runtime-client`: React runtime UI (FAB, overlay, menu, panel host)
-- `packages/tool-contracts`: shared action/runtime/server contracts
-- `actions/dummy-action`: command action example
-- `actions/tailwind-editor-action`: panel action + server operation example
+- `packages/tool-contracts`: shared plugin/runtime/server contracts
+- `actions/dummy-action`: command-style plugin example
+- `actions/tailwind-editor-action`: panel plugin + server handler example
 
 ## Quick Start
 
@@ -45,29 +45,40 @@ Then open the app URL shown by Vite.
 
 1. Click the floating `Select` button.
 2. Hover elements to see source mapping overlay.
-3. Left click to run the default action.
-4. Right click to choose any registered action.
+3. Left click to run the default plugin.
+4. Right click to choose any registered plugin.
 5. For `Tailwind Editor`, edit classes and watch updates persist back to source.
 
-## Registering Actions
+## Registering Plugins
 
-Actions are registered explicitly in Vite config:
+Plugins are registered explicitly in Vite config:
 
 ```ts
-import { dummyActionRegistration } from "@refract/dummy-action";
-import { tailwindEditorActionRegistration } from "@refract/tailwind-editor-action";
-import { toolPlugin } from "@refract/vite-plugin";
+import { dummyPlugin } from "@refract/dummy-action";
+import { tailwindEditorPlugin } from "@refract/tailwind-editor-action";
+import { refract } from "@refract/vite-plugin";
 
-toolPlugin({
-  actions: [tailwindEditorActionRegistration, dummyActionRegistration],
-  defaultActionId: "tailwind-editor"
+refract({
+  plugins: [tailwindEditorPlugin, dummyPlugin],
+  defaultPluginId: "tailwind-editor"
 });
 ```
 
-Each action package exports a `ToolActionRegistration` that points to:
+## Plugin API
 
-- runtime action module and export (`runtimeModule`, `runtimeExport`)
-- optional server operation handlers
+Public plugin shape:
+
+```ts
+interface RefractPlugin {
+  id: string;
+  label: string;
+  inBrowserHandler: (ctx: RefractBrowserContext) => void | Promise<void>;
+  serverHandler?: (ctx: RefractServerContext) => RefractServerResult | Promise<RefractServerResult>;
+  Panel?: (props: RefractPanelProps) => unknown;
+}
+```
+
+Plugin packages should export a `RefractPlugin` from their package entrypoint.
 
 ## Current Scope
 

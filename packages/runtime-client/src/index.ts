@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
-import type { ToolRuntimeInitOptions } from "@refract/tool-contracts";
+import type { RefractRuntimeInitOptions } from "@refract/tool-contracts";
 
 import { runtimeStyles } from "./runtime-styles";
 import { ToolRuntimeApp } from "./ToolRuntimeApp";
@@ -11,16 +11,16 @@ const RUNTIME_KEY = "__REFRACT_TOOL_RUNTIME__";
 
 declare global {
   interface Window {
-    [RUNTIME_KEY]?: ToolRuntimeBridge;
+    [RUNTIME_KEY]?: RefractRuntimeBridge;
   }
 }
 
-class ToolRuntimeBridge {
+class RefractRuntimeBridge {
   private readonly host: HTMLDivElement;
   private readonly root: Root;
-  private options: ToolRuntimeInitOptions;
+  private options: RefractRuntimeInitOptions;
 
-  constructor(options: ToolRuntimeInitOptions) {
+  constructor(options: RefractRuntimeInitOptions) {
     this.options = options;
 
     this.host = document.createElement("div");
@@ -47,7 +47,7 @@ class ToolRuntimeBridge {
     this.render();
   }
 
-  updateOptions(options: ToolRuntimeInitOptions): void {
+  updateOptions(options: RefractRuntimeInitOptions): void {
     this.options = options;
     this.render();
   }
@@ -62,7 +62,7 @@ class ToolRuntimeBridge {
   }
 }
 
-export function initToolRuntime(options: ToolRuntimeInitOptions): void {
+export function initToolRuntime(options: RefractRuntimeInitOptions): void {
   if (typeof window === "undefined" || typeof document === "undefined") {
     return;
   }
@@ -73,7 +73,7 @@ export function initToolRuntime(options: ToolRuntimeInitOptions): void {
     return;
   }
 
-  const runtime = new ToolRuntimeBridge(options);
+  const runtime = new RefractRuntimeBridge(options);
   runtime.mount();
   window[RUNTIME_KEY] = runtime;
 }

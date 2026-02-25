@@ -1,104 +1,144 @@
-export interface ToolSelectionRef {
+export interface RefractSelectionRef {
   file: string;
   line: number;
   column?: number;
   tagName: string;
 }
 
-export interface ToolActionOperationRequest {
-  actionId: string;
-  operation: string;
-  selection: ToolSelectionRef;
-  input: unknown;
-}
-
-interface ToolActionOperationSuccess {
+export interface RefractServerSuccess<Result = unknown> {
   ok: true;
-  data?: unknown;
+  data?: Result;
 }
 
-interface ToolActionOperationFailure {
+export interface RefractServerFailure {
   ok: false;
   code: string;
   message: string;
   status?: 400 | 403 | 404 | 409 | 500;
 }
 
-export type ToolActionOperationResult =
-  | ToolActionOperationSuccess
-  | ToolActionOperationFailure;
+export type RefractServerResult<Result = unknown> =
+  | RefractServerSuccess<Result>
+  | RefractServerFailure;
 
-interface ToolRuntimeOperationInvoker {
-  (operation: string, input: unknown): Promise<ToolActionOperationResult>;
+export interface RefractFileContext {
+  absolutePath: string;
+  sourceText: string;
+  ast: unknown;
+  writeSourceText: (next: string) => Promise<void>;
 }
 
-export interface ToolRuntimeActionContext {
-  selection: ToolSelectionRef;
-  element: HTMLElement;
-  invokeOperation: ToolRuntimeOperationInvoker;
+export interface RefractServerContext<InvokePayload = unknown> {
+  selectionRef: RefractSelectionRef;
+  payload: InvokePayload;
+  projectRoot: string;
+  file: RefractFileContext;
 }
 
-export interface ToolRuntimePanelProps {
-  selection: ToolSelectionRef;
+export interface RefractServerHandler<InvokePayload = unknown, InvokeResult = unknown> {
+  (context: RefractServerContext<InvokePayload>):
+    | RefractServerResult<InvokeResult>
+    | Promise<RefractServerResult<InvokeResult>>;
+}
+
+export interface RefractPanelProps<InvokePayload = unknown, InvokeResult = unknown> {
+  selectionRef: RefractSelectionRef;
   element: HTMLElement;
-  invokeOperation: ToolRuntimeOperationInvoker;
   closePanel: () => void;
-  preview: {
-    setClassName: (next: string) => void;
+  server: {
+    invoke: (payload: InvokePayload) => Promise<RefractServerResult<InvokeResult>>;
   };
 }
 
-interface ToolRuntimeActionBase {
+export interface RefractBrowserContext<InvokePayload = unknown, InvokeResult = unknown> {
+  selectionRef: RefractSelectionRef;
+  element: HTMLElement;
+  ui: {
+    openPanel: () => void;
+    closePanel: () => void;
+  };
+  server: {
+    invoke: (payload: InvokePayload) => Promise<RefractServerResult<InvokeResult>>;
+  };
+}
+
+export interface RefractRuntimePlugin<InvokePayload = unknown, InvokeResult = unknown> {
   id: string;
   label: string;
+  inBrowserHandler: (
+    context: RefractBrowserContext<InvokePayload, InvokeResult>
+  ) => void | Promise<void>;
+  Panel?: (props: RefractPanelProps<InvokePayload, InvokeResult>) => unknown;
 }
 
-export interface ToolRuntimeCommandAction extends ToolRuntimeActionBase {
-  type: "command";
-  run(context: ToolRuntimeActionContext): void | Promise<void>;
+export interface RefractPlugin<InvokePayload = unknown, InvokeResult = unknown>
+  extends RefractRuntimePlugin<InvokePayload, InvokeResult> {
+  serverHandler?: RefractServerHandler<InvokePayload, InvokeResult>;
 }
 
-export interface ToolRuntimePanelAction extends ToolRuntimeActionBase {
-  type: "panel";
-  Panel: (props: ToolRuntimePanelProps) => unknown;
+export interface RefractRuntimeInitOptions {
+  plugins: RefractRuntimePlugin[];
+  defaultPluginId?: string;
 }
 
-export type ToolRuntimeAction = ToolRuntimeCommandAction | ToolRuntimePanelAction;
-
-export interface ToolRuntimeInitOptions {
-  actions: ToolRuntimeAction[];
-  defaultActionId?: string;
-}
-
-export interface ToolRuntimeManifestAction {
+export interface RefractRuntimeManifestPlugin {
   id: string;
-  runtimeModule: string;
-  runtimeExport: string;
+  browserModule: string;
 }
 
-export interface ToolRuntimeBootstrapPayload {
-  actions: ToolRuntimeManifestAction[];
-  defaultActionId?: string;
+export interface RefractRuntimeBootstrapPayload {
+  plugins: RefractRuntimeManifestPlugin[];
+  defaultPluginId?: string;
 }
 
-export interface ToolServerOperationContext {
-  actionId: string;
-  operation: string;
-  selection: ToolSelectionRef;
-  input: unknown;
-  projectRoot: string;
-  absoluteFilePath: string;
+export interface RefractServerInvokeRequest<InvokePayload = unknown> {
+  pluginId: string;
+  selectionRef: RefractSelectionRef;
+  payload: InvokePayload;
 }
 
-export interface ToolServerOperationHandler {
-  (context: ToolServerOperationContext):
-    | ToolActionOperationResult
-    | Promise<ToolActionOperationResult>;
+const REFRACT_BROWSER_MODULE_URL = Symbol.for("refract.browser-module-url");
+
+type RefractBrowserModuleCarrier = {
+  [REFRACT_BROWSER_MODULE_URL]?: string;
+};
+
+export function defineRefractBrowserPlugin<
+  InvokePayload = unknown,
+  InvokeResult = unknown
+>(
+  browserModuleUrl: string,
+  plugin: RefractRuntimePlugin<InvokePayload, InvokeResult>
+): RefractRuntimePlugin<InvokePayload, InvokeResult> {
+  if (!browserModuleUrl) {
+    throw new Error("defineRefractBrowserPlugin requires browserModuleUrl.");
+  }
+
+  Object.defineProperty(plugin as RefractBrowserModuleCarrier, REFRACT_BROWSER_MODULE_URL, {
+    value: browserModuleUrl,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+
+  return plugin;
 }
 
-export interface ToolActionRegistration {
-  id: string;
-  runtimeModule: string;
-  runtimeExport: string;
-  serverOperations?: Record<string, ToolServerOperationHandler>;
+export function withRefractServerHandler<
+  InvokePayload = unknown,
+  InvokeResult = unknown
+>(
+  browserPlugin: RefractRuntimePlugin<InvokePayload, InvokeResult>,
+  serverHandler: RefractServerHandler<InvokePayload, InvokeResult>
+): RefractPlugin<InvokePayload, InvokeResult> {
+  (browserPlugin as RefractPlugin<InvokePayload, InvokeResult>).serverHandler =
+    serverHandler;
+  return browserPlugin as RefractPlugin<InvokePayload, InvokeResult>;
+}
+
+export function getRefractBrowserModuleUrl(
+  plugin: RefractRuntimePlugin | RefractPlugin
+): string | null {
+  const candidate = (plugin as RefractBrowserModuleCarrier)[REFRACT_BROWSER_MODULE_URL];
+  return typeof candidate === "string" && candidate.length > 0 ? candidate : null;
 }

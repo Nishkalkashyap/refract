@@ -1,111 +1,109 @@
 import type {
-  ToolRuntimeAction,
-  ToolRuntimeBootstrapPayload,
-  ToolRuntimeManifestAction
+  RefractRuntimeBootstrapPayload,
+  RefractRuntimeManifestPlugin,
+  RefractRuntimePlugin
 } from "@refract/tool-contracts";
 
 import { initToolRuntime } from "./index";
 
 export class RuntimeBootstrapper {
-  async bootstrap(payload: ToolRuntimeBootstrapPayload): Promise<void> {
+  async bootstrap(payload: RefractRuntimeBootstrapPayload): Promise<void> {
     const settledModules = await Promise.allSettled(
-      payload.actions.map(async (action) => ({
-        action,
-        moduleNamespace: await import(/* @vite-ignore */ action.runtimeModule)
+      payload.plugins.map(async (plugin) => ({
+        plugin,
+        moduleNamespace: await import(/* @vite-ignore */ plugin.browserModule)
       }))
     );
 
-    const runtimeActions: ToolRuntimeAction[] = [];
+    const runtimePlugins: RefractRuntimePlugin[] = [];
 
     for (const settled of settledModules) {
       if (settled.status === "rejected") {
-        console.warn("[refract] Failed to load runtime action module.", settled.reason);
+        console.warn("[refract] Failed to load runtime plugin module.", settled.reason);
         continue;
       }
 
-      const { action, moduleNamespace } = settled.value;
-      const runtimeAction = this.resolveRuntimeAction(action, moduleNamespace);
-      if (runtimeAction) {
-        runtimeActions.push(runtimeAction);
+      const { plugin, moduleNamespace } = settled.value;
+      const runtimePlugin = this.resolveRuntimePlugin(plugin, moduleNamespace);
+      if (runtimePlugin) {
+        runtimePlugins.push(runtimePlugin);
       }
     }
 
-    const defaultActionId = this.resolveDefaultActionId(
-      payload.defaultActionId,
-      runtimeActions
+    const defaultPluginId = this.resolveDefaultPluginId(
+      payload.defaultPluginId,
+      runtimePlugins
     );
 
     initToolRuntime({
-      actions: runtimeActions,
-      ...(defaultActionId ? { defaultActionId } : {})
+      plugins: runtimePlugins,
+      ...(defaultPluginId ? { defaultPluginId } : {})
     });
   }
 
-  private resolveRuntimeAction(
-    action: ToolRuntimeManifestAction,
+  private resolveRuntimePlugin(
+    manifestPlugin: RefractRuntimeManifestPlugin,
     moduleNamespace: unknown
-  ): ToolRuntimeAction | null {
+  ): RefractRuntimePlugin | null {
     if (typeof moduleNamespace !== "object" || moduleNamespace === null) {
-      console.warn(`[refract] Invalid runtime action module for '${action.id}'.`);
+      console.warn(`[refract] Invalid runtime plugin module for '${manifestPlugin.id}'.`);
       return null;
     }
 
-    const runtimeExport = (moduleNamespace as Record<string, unknown>)[
-      action.runtimeExport
-    ];
-
-    if (!this.isToolRuntimeAction(runtimeExport)) {
+    const runtimePlugin = (moduleNamespace as { default?: unknown }).default;
+    if (!this.isRefractRuntimePlugin(runtimePlugin)) {
       console.warn(
-        `[refract] Runtime export '${action.runtimeExport}' is invalid for action '${action.id}'.`
+        `[refract] Runtime module default export is invalid for plugin '${manifestPlugin.id}'.`
       );
       return null;
     }
 
-    return runtimeExport;
+    return runtimePlugin;
   }
 
-  private isToolRuntimeAction(candidate: unknown): candidate is ToolRuntimeAction {
+  private isRefractRuntimePlugin(candidate: unknown): candidate is RefractRuntimePlugin {
     if (typeof candidate !== "object" || candidate === null) {
       return false;
     }
 
-    const action = candidate as Record<string, unknown>;
+    const plugin = candidate as Record<string, unknown>;
+
     if (
-      typeof action.id !== "string" ||
-      typeof action.label !== "string" ||
-      (action.type !== "command" && action.type !== "panel")
+      typeof plugin.id !== "string" ||
+      typeof plugin.label !== "string" ||
+      typeof plugin.inBrowserHandler !== "function"
     ) {
       return false;
     }
 
-    if (action.type === "command") {
-      return typeof action.run === "function";
+    if (typeof plugin.Panel !== "undefined" && typeof plugin.Panel !== "function") {
+      return false;
     }
 
-    return typeof action.Panel === "function";
+    return true;
   }
 
-  private resolveDefaultActionId(
-    requestedDefaultActionId: string | undefined,
-    actions: ToolRuntimeAction[]
+  private resolveDefaultPluginId(
+    requestedDefaultPluginId: string | undefined,
+    plugins: RefractRuntimePlugin[]
   ): string | undefined {
-    if (!requestedDefaultActionId) {
-      return actions[0]?.id;
+    if (!requestedDefaultPluginId) {
+      return plugins[0]?.id;
     }
 
-    if (actions.some((action) => action.id === requestedDefaultActionId)) {
-      return requestedDefaultActionId;
+    if (plugins.some((plugin) => plugin.id === requestedDefaultPluginId)) {
+      return requestedDefaultPluginId;
     }
 
     console.warn(
-      `[refract] defaultActionId '${requestedDefaultActionId}' was not loaded. Falling back to the first available action.`
+      `[refract] defaultPluginId '${requestedDefaultPluginId}' was not loaded. Falling back to the first available plugin.`
     );
-    return actions[0]?.id;
+    return plugins[0]?.id;
   }
 }
 
 export async function bootstrapToolRuntime(
-  payload: ToolRuntimeBootstrapPayload
+  payload: RefractRuntimeBootstrapPayload
 ): Promise<void> {
   return new RuntimeBootstrapper().bootstrap(payload);
 }
