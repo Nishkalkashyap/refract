@@ -2,7 +2,7 @@
 
 "use client";
 
-import { createElement, Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   type RefractPanelProps,
@@ -11,7 +11,7 @@ import {
 } from "@nkstack/refract-tool-contracts";
 import { TailwindInspectorToolbar } from "@nkstack/tailwind-editor-react";
 
-import type { TailwindEditorInvokePayload } from "./types";
+import type { TailwindEditorInvokePayload } from "./types.js";
 
 const SAVE_DEBOUNCE_MS = 250;
 let tailwindEditorStylesPromise: Promise<void> | null = null;
@@ -137,18 +137,13 @@ function TailwindEditorPanel({
         ? "Saving..."
         : errorMessage || "Failed to persist className changes.";
 
-  return createElement(
-    Fragment,
-    null,
-    createElement(TailwindInspectorToolbar, { value, onChange: handleChange }),
-    createElement(
-      "div",
-      {
-        className: "tool-panel-status",
-        "data-state": saveState
-      },
-      statusText
-    )
+  return (
+    <>
+      <TailwindInspectorToolbar value={value} onChange={handleChange} />
+      <div className="tool-panel-status" data-state={saveState}>
+        {statusText}
+      </div>
+    </>
   );
 }
 

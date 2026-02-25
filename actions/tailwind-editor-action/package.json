@@ -3,11 +3,27 @@
   "version": "0.0.0",
   "private": false,
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./runtime": "./src/runtime.ts",
-    "./server": "./src/server-plugin.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.js"
+    },
+    "./server": {
+      "types": "./dist/server-plugin.d.ts",
+      "import": "./dist/server-plugin.js"
+    }
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "dependencies": {
     "@babel/generator": "latest",
     "@babel/parser": "latest",
@@ -25,7 +41,9 @@
   "scripts": {
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "build": "tsc -p tsconfig.json --noEmit"
+    "clean": "rm -rf dist",
+    "build": "pnpm run clean && tsc -p tsconfig.build.json",
+    "prepack": "pnpm run build"
   },
   "publishConfig": {
     "access": "public"

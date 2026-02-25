@@ -1,7 +1,7 @@
 import type { RefractServerHandler } from "@nkstack/refract-tool-contracts";
 
-import type { TailwindEditorInvokePayload } from "./types";
-import { ClassNameFileUpdater } from "./update-classname.ts";
+import type { TailwindEditorInvokePayload } from "./types.js";
+import { ClassNameFileUpdater } from "./update-classname.js";
 
 class TailwindEditorServer {
   private readonly classNameFileUpdater = new ClassNameFileUpdater();
