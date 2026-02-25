@@ -14,7 +14,7 @@ Refract is composed of four primary layers:
 Flow at a high level:
 
 1. Vite plugin instruments JSX with source metadata (`data-tool-file`, `data-tool-line`, `data-tool-column`).
-2. Vite plugin injects runtime entry script (`/@tool/runtime`) in dev HTML.
+2. Vite plugin injects an inline module script in dev HTML that bootstraps runtime from a manifest.
 3. Runtime handles selection UX and dispatches actions.
 4. Panel/command actions may call `POST /@tool/action` for server-side operations.
 5. Server operation handlers (provided by action modules) mutate source as needed.
@@ -55,8 +55,9 @@ This prevents runtime/plugin/action packages from drifting apart.
 - Adds metadata attributes to JSX opening elements.
 
 2. Runtime injection
-- Injects `<script type="module" src="/@tool/runtime">` in dev HTML.
-- Serves a virtual module that imports runtime actions from registered action packages.
+- Injects an inline `<script type="module">` in dev HTML.
+- Calls `bootstrapToolRuntime(...)` from `@refract/runtime-client/bootstrap`.
+- Passes action manifest data (`id`, `runtimeModule`, `runtimeExport`, `defaultActionId`).
 
 3. Generic action bridge
 - Exposes `POST /@tool/action`.
@@ -92,7 +93,8 @@ Design constraint:
 Each action module exports a `ToolActionRegistration`:
 
 - `id`
-- `runtimeImport` (`module`, `exportName`)
+- `runtimeModule`
+- `runtimeExport`
 - optional `serverOperations`
 
 ### Dummy Action

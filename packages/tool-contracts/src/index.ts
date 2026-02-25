@@ -70,6 +70,17 @@ export interface ToolRuntimeInitOptions {
   defaultActionId?: string;
 }
 
+export interface ToolRuntimeManifestAction {
+  id: string;
+  runtimeModule: string;
+  runtimeExport: string;
+}
+
+export interface ToolRuntimeBootstrapPayload {
+  actions: ToolRuntimeManifestAction[];
+  defaultActionId?: string;
+}
+
 export interface ToolServerOperationContext {
   actionId: string;
   operation: string;
@@ -87,9 +98,7 @@ export interface ToolServerOperationHandler {
 
 export interface ToolActionRegistration {
   id: string;
-  runtimeImport: {
-    module: string;
-    exportName: string;
-  };
+  runtimeModule: string;
+  runtimeExport: string;
   serverOperations?: Record<string, ToolServerOperationHandler>;
 }

@@ -10,7 +10,7 @@ It lets you pick rendered elements in the browser, map them back to source (`fil
 ## What It Does
 
 - Injects source metadata into JSX elements during Vite dev transforms
-- Injects a runtime client UI into the page (`/@tool/runtime`)
+- Injects an inline runtime bootstrap script into dev HTML
 - Provides selection mode with hover highlight + right-click action menu
 - Supports command and panel-style actions
 - Supports action-driven server operations through a generic dev bridge (`POST /@tool/action`)
@@ -66,7 +66,7 @@ toolPlugin({
 
 Each action package exports a `ToolActionRegistration` that points to:
 
-- runtime action module (`command` or `panel`)
+- runtime action module and export (`runtimeModule`, `runtimeExport`)
 - optional server operation handlers
 
 ## Current Scope
