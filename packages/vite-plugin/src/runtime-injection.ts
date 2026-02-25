@@ -1,16 +1,17 @@
 import type { ToolRuntimeBootstrapPayload } from "@refract/tool-contracts";
 import type { HtmlTagDescriptor } from "vite";
 
-export function createRuntimeInjectionTag(
-  payload: ToolRuntimeBootstrapPayload,
-  bootstrapModule: string
-): HtmlTagDescriptor {
-  return {
-    tag: "script",
-    attrs: {
-      type: "module"
-    },
-    children: `
+export class RuntimeInjection {
+  createTag(
+    payload: ToolRuntimeBootstrapPayload,
+    bootstrapModule: string
+  ): HtmlTagDescriptor {
+    return {
+      tag: "script",
+      attrs: {
+        type: "module"
+      },
+      children: `
 import { bootstrapToolRuntime } from ${JSON.stringify(bootstrapModule)};
 
 if (!window.__REFRACT_TOOL_RUNTIME_ENTRY__) {
@@ -18,6 +19,7 @@ if (!window.__REFRACT_TOOL_RUNTIME_ENTRY__) {
   void bootstrapToolRuntime(${JSON.stringify(payload)});
 }
 `,
-    injectTo: "body"
-  };
+      injectTo: "body"
+    };
+  }
 }

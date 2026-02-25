@@ -48,7 +48,7 @@ export interface ToolRuntimePanelProps {
   };
 }
 
-export interface ToolRuntimeActionBase {
+interface ToolRuntimeActionBase {
   id: string;
   label: string;
 }

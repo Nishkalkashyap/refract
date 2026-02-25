@@ -6,103 +6,103 @@ import * as t from "@babel/types";
 const generate = getDefaultExport(generateModule);
 const traverse = getDefaultExport(traverseModule);
 
-interface TransformJsxForToolMetadataOptions {
+export interface JsxInstrumentationTransformOptions {
   code: string;
   id: string;
   root: string;
 }
 
-export function transformJsxForToolMetadata(
-  options: TransformJsxForToolMetadataOptions
-) {
-  const cleanId = options.id.split("?")[0];
-  if (!isJsxLikeFile(cleanId) || cleanId.includes("/node_modules/")) {
-    return;
-  }
-
-  const ast = parse(options.code, {
-    sourceType: "module",
-    plugins: getParserPlugins(cleanId)
-  });
-
-  let didMutate = false;
-  const file = normalizeSourceFile(cleanId, options.root);
-
-  traverse(ast, {
-    JSXOpeningElement(pathRef) {
-      const { node } = pathRef;
-      const start = node.loc?.start;
-      if (!start) {
-        return;
-      }
-
-      appendAttribute(node, "data-tool-file", file);
-      appendAttribute(node, "data-tool-line", String(start.line));
-      appendAttribute(node, "data-tool-column", String(start.column + 1));
-      didMutate = true;
+export class JsxInstrumentation {
+  transform(options: JsxInstrumentationTransformOptions) {
+    const cleanId = options.id.split("?")[0];
+    if (!this.isJsxLikeFile(cleanId) || cleanId.includes("/node_modules/")) {
+      return;
     }
-  });
 
-  if (!didMutate) {
-    return;
+    const ast = parse(options.code, {
+      sourceType: "module",
+      plugins: this.getParserPlugins(cleanId)
+    });
+
+    let didMutate = false;
+    const file = this.normalizeSourceFile(cleanId, options.root);
+
+    traverse(ast, {
+      JSXOpeningElement: (pathRef) => {
+        const { node } = pathRef;
+        const start = node.loc?.start;
+        if (!start) {
+          return;
+        }
+
+        this.appendAttribute(node, "data-tool-file", file);
+        this.appendAttribute(node, "data-tool-line", String(start.line));
+        this.appendAttribute(node, "data-tool-column", String(start.column + 1));
+        didMutate = true;
+      }
+    });
+
+    if (!didMutate) {
+      return;
+    }
+
+    const output = generate(
+      ast,
+      {
+        retainLines: true,
+        sourceMaps: true
+      },
+      options.code
+    );
+
+    return {
+      code: output.code,
+      map: output.map ?? null
+    };
   }
 
-  const output = generate(
-    ast,
-    {
-      retainLines: true,
-      sourceMaps: true
-    },
-    options.code
-  );
-
-  return {
-    code: output.code,
-    map: output.map ?? null
-  };
-}
-
-function isJsxLikeFile(id: string): boolean {
-  return /\.(jsx|tsx)$/.test(id);
-}
-
-function getParserPlugins(id: string): ("jsx" | "typescript")[] {
-  if (id.endsWith(".tsx")) {
-    return ["jsx", "typescript"];
+  private isJsxLikeFile(id: string): boolean {
+    return /\.(jsx|tsx)$/.test(id);
   }
 
-  return ["jsx"];
-}
+  private getParserPlugins(id: string): ("jsx" | "typescript")[] {
+    if (id.endsWith(".tsx")) {
+      return ["jsx", "typescript"];
+    }
 
-function normalizeSourceFile(id: string, root: string): string {
-  const normalizedId = toPosixPath(id);
-  const normalizedRoot = toPosixPath(root);
-
-  if (normalizedId.startsWith(normalizedRoot)) {
-    const relativePath = normalizedId.slice(normalizedRoot.length).replace(/^\//, "");
-    return `/${relativePath}`;
+    return ["jsx"];
   }
 
-  return normalizedId;
-}
+  private normalizeSourceFile(id: string, root: string): string {
+    const normalizedId = this.toPosixPath(id);
+    const normalizedRoot = this.toPosixPath(root);
 
-function appendAttribute(node: t.JSXOpeningElement, name: string, value: string): void {
-  const exists = node.attributes.some(
-    (attribute) =>
-      attribute.type === "JSXAttribute" &&
-      attribute.name.type === "JSXIdentifier" &&
-      attribute.name.name === name
-  );
+    if (normalizedId.startsWith(normalizedRoot)) {
+      const relativePath = normalizedId.slice(normalizedRoot.length).replace(/^\//, "");
+      return `/${relativePath}`;
+    }
 
-  if (exists) {
-    return;
+    return normalizedId;
   }
 
-  node.attributes.push(t.jsxAttribute(t.jsxIdentifier(name), t.stringLiteral(value)));
-}
+  private appendAttribute(node: t.JSXOpeningElement, name: string, value: string): void {
+    const exists = node.attributes.some(
+      (attribute) =>
+        attribute.type === "JSXAttribute" &&
+        attribute.name.type === "JSXIdentifier" &&
+        attribute.name.name === name
+    );
 
-function toPosixPath(inputPath: string): string {
-  return inputPath.replace(/\\/g, "/");
+    if (exists) {
+      return;
+    }
+
+    node.attributes.push(t.jsxAttribute(t.jsxIdentifier(name), t.stringLiteral(value)));
+  }
+
+  private toPosixPath(inputPath: string): string {
+    return inputPath.replace(/\\/g, "/");
+  }
 }
 
 function getDefaultExport<T>(moduleValue: { default: T } | T): T {

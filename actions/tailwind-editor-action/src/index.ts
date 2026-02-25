@@ -10,5 +10,3 @@ export const tailwindEditorActionRegistration: ToolActionRegistration = {
   runtimeExport: "tailwindEditorRuntimeAction",
   serverOperations: tailwindEditorServerOperations
 };
-
-export { tailwindEditorServerOperations };

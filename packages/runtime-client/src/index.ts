@@ -77,18 +77,3 @@ export function initToolRuntime(options: ToolRuntimeInitOptions): void {
   runtime.mount();
   window[RUNTIME_KEY] = runtime;
 }
-
-export type {
-  ToolActionOperationRequest,
-  ToolActionOperationResult,
-  ToolActionRegistration,
-  ToolRuntimeAction,
-  ToolRuntimeActionContext,
-  ToolRuntimeCommandAction,
-  ToolRuntimeInitOptions,
-  ToolRuntimePanelAction,
-  ToolRuntimePanelProps,
-  ToolSelectionRef,
-  ToolServerOperationContext,
-  ToolServerOperationHandler
-} from "@refract/tool-contracts";

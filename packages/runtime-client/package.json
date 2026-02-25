@@ -5,8 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./bootstrap": "./src/bootstrap.ts",
-    "./types": "./src/types.ts"
+    "./bootstrap": "./src/bootstrap.ts"
   },
   "dependencies": {
     "@refract/tool-contracts": "workspace:*",

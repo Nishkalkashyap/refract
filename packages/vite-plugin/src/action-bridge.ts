@@ -10,18 +10,26 @@ import type {
 
 const TOOL_ACTION_PATH = "/@tool/action";
 
-interface ActionBridgeAction {
+export interface ActionBridgeAction {
   id: string;
   serverOperations: Record<string, ToolServerOperationHandler>;
 }
 
-interface CreateActionBridgeMiddlewareOptions {
+export interface ActionBridgeOptions {
   actions: ActionBridgeAction[];
   getProjectRoot: () => string;
 }
 
-export function createActionBridgeMiddleware(options: CreateActionBridgeMiddlewareOptions) {
-  return async (
+export class ActionBridge {
+  private readonly actions: ActionBridgeAction[];
+  private readonly getProjectRoot: () => string;
+
+  constructor(options: ActionBridgeOptions) {
+    this.actions = options.actions;
+    this.getProjectRoot = options.getProjectRoot;
+  }
+
+  readonly middleware = async (
     request: IncomingMessage,
     response: ServerResponse,
     next: () => void
@@ -32,9 +40,9 @@ export function createActionBridgeMiddleware(options: CreateActionBridgeMiddlewa
       return;
     }
 
-    const payload = await readRequestBody(request);
+    const payload = await this.readRequestBody(request);
     if (!payload) {
-      respondJson(response, 400, {
+      this.respondJson(response, 400, {
         ok: false,
         code: "INVALID_PAYLOAD",
         message: "Expected a valid JSON object payload."
@@ -42,9 +50,9 @@ export function createActionBridgeMiddleware(options: CreateActionBridgeMiddlewa
       return;
     }
 
-    const operationRequest = parseOperationRequest(payload);
+    const operationRequest = this.parseOperationRequest(payload);
     if (!operationRequest) {
-      respondJson(response, 400, {
+      this.respondJson(response, 400, {
         ok: false,
         code: "INVALID_PAYLOAD",
         message: "Payload must include actionId, operation, selection, and input."
@@ -52,11 +60,11 @@ export function createActionBridgeMiddleware(options: CreateActionBridgeMiddlewa
       return;
     }
 
-    const action = options.actions.find(
+    const action = this.actions.find(
       (candidate) => candidate.id === operationRequest.actionId
     );
     if (!action) {
-      respondJson(response, 404, {
+      this.respondJson(response, 404, {
         ok: false,
         code: "ACTION_NOT_FOUND",
         message: `Unknown action '${operationRequest.actionId}'.`
@@ -66,7 +74,7 @@ export function createActionBridgeMiddleware(options: CreateActionBridgeMiddlewa
 
     const operationHandler = action.serverOperations[operationRequest.operation];
     if (!operationHandler) {
-      respondJson(response, 404, {
+      this.respondJson(response, 404, {
         ok: false,
         code: "OPERATION_NOT_FOUND",
         message: `Unknown operation '${operationRequest.operation}' for action '${operationRequest.actionId}'.`
@@ -74,13 +82,13 @@ export function createActionBridgeMiddleware(options: CreateActionBridgeMiddlewa
       return;
     }
 
-    const projectRoot = options.getProjectRoot();
-    const absoluteFilePath = resolveSelectionFilePath(
+    const projectRoot = this.getProjectRoot();
+    const absoluteFilePath = this.resolveSelectionFilePath(
       operationRequest.selection.file,
       projectRoot
     );
-    if (!absoluteFilePath || !isWithinRoot(absoluteFilePath, projectRoot)) {
-      respondJson(response, 403, {
+    if (!absoluteFilePath || !this.isWithinRoot(absoluteFilePath, projectRoot)) {
+      this.respondJson(response, 403, {
         ok: false,
         code: "FORBIDDEN_PATH",
         message: "Requested file path is outside project root."
@@ -98,141 +106,141 @@ export function createActionBridgeMiddleware(options: CreateActionBridgeMiddlewa
         absoluteFilePath
       });
 
-      respondOperationResult(response, result);
+      this.respondOperationResult(response, result);
     } catch {
-      respondJson(response, 500, {
+      this.respondJson(response, 500, {
         ok: false,
         code: "OPERATION_HANDLER_ERROR",
         message: "Unhandled exception while executing action operation."
       });
     }
   };
-}
 
-function parseOperationRequest(
-  value: Record<string, unknown>
-): ToolActionOperationRequest | null {
-  const actionId = typeof value.actionId === "string" ? value.actionId : "";
-  const operation = typeof value.operation === "string" ? value.operation : "";
-  const selection = parseSelectionRef(value.selection);
+  private parseOperationRequest(
+    value: Record<string, unknown>
+  ): ToolActionOperationRequest | null {
+    const actionId = typeof value.actionId === "string" ? value.actionId : "";
+    const operation = typeof value.operation === "string" ? value.operation : "";
+    const selection = this.parseSelectionRef(value.selection);
 
-  if (!actionId || !operation || !selection || !("input" in value)) {
-    return null;
+    if (!actionId || !operation || !selection || !("input" in value)) {
+      return null;
+    }
+
+    return {
+      actionId,
+      operation,
+      selection,
+      input: value.input
+    };
   }
 
-  return {
-    actionId,
-    operation,
-    selection,
-    input: value.input
-  };
-}
+  private parseSelectionRef(value: unknown): ToolSelectionRef | null {
+    if (typeof value !== "object" || value === null) {
+      return null;
+    }
 
-function parseSelectionRef(value: unknown): ToolSelectionRef | null {
-  if (typeof value !== "object" || value === null) {
-    return null;
+    const candidate = value as {
+      file?: unknown;
+      line?: unknown;
+      column?: unknown;
+      tagName?: unknown;
+    };
+
+    const line = candidate.line;
+
+    if (
+      typeof candidate.file !== "string" ||
+      typeof line !== "number" ||
+      !Number.isInteger(line) ||
+      line < 1 ||
+      typeof candidate.tagName !== "string"
+    ) {
+      return null;
+    }
+    const column = typeof candidate.column === "number" ? candidate.column : undefined;
+    if (typeof column === "number" && (!Number.isInteger(column) || column < 1)) {
+      return null;
+    }
+
+    return {
+      file: candidate.file,
+      line,
+      tagName: candidate.tagName,
+      ...(typeof column === "number" ? { column } : {})
+    };
   }
 
-  const candidate = value as {
-    file?: unknown;
-    line?: unknown;
-    column?: unknown;
-    tagName?: unknown;
-  };
+  private resolveSelectionFilePath(selectionFile: string, root: string): string | null {
+    const normalizedFile = selectionFile.replace(/\\/g, "/");
+    const relativeFile = normalizedFile.startsWith("/")
+      ? normalizedFile.slice(1)
+      : normalizedFile;
 
-  const line = candidate.line;
+    if (!relativeFile) {
+      return null;
+    }
 
-  if (
-    typeof candidate.file !== "string" ||
-    typeof line !== "number" ||
-    !Number.isInteger(line) ||
-    line < 1 ||
-    typeof candidate.tagName !== "string"
-  ) {
-    return null;
-  }
-  const column = typeof candidate.column === "number" ? candidate.column : undefined;
-  if (typeof column === "number" && (!Number.isInteger(column) || column < 1)) {
-    return null;
+    return path.resolve(root, relativeFile);
   }
 
-  return {
-    file: candidate.file,
-    line,
-    tagName: candidate.tagName,
-    ...(typeof column === "number" ? { column } : {})
-  };
-}
+  private respondOperationResult(
+    response: ServerResponse,
+    result: ToolActionOperationResult
+  ): void {
+    if (result.ok) {
+      this.respondJson(response, 200, result);
+      return;
+    }
 
-function resolveSelectionFilePath(selectionFile: string, root: string): string | null {
-  const normalizedFile = selectionFile.replace(/\\/g, "/");
-  const relativeFile = normalizedFile.startsWith("/")
-    ? normalizedFile.slice(1)
-    : normalizedFile;
-
-  if (!relativeFile) {
-    return null;
+    this.respondJson(response, result.status ?? 400, result);
   }
 
-  return path.resolve(root, relativeFile);
-}
-
-function respondOperationResult(
-  response: ServerResponse,
-  result: ToolActionOperationResult
-): void {
-  if (result.ok) {
-    respondJson(response, 200, result);
-    return;
+  private respondJson(response: ServerResponse, statusCode: number, payload: unknown): void {
+    response.statusCode = statusCode;
+    response.setHeader("Content-Type", "application/json; charset=utf-8");
+    response.end(JSON.stringify(payload));
   }
 
-  respondJson(response, result.status ?? 400, result);
-}
+  private async readRequestBody(
+    request: IncomingMessage
+  ): Promise<Record<string, unknown> | null> {
+    const chunks: string[] = [];
 
-function respondJson(response: ServerResponse, statusCode: number, payload: unknown): void {
-  response.statusCode = statusCode;
-  response.setHeader("Content-Type", "application/json; charset=utf-8");
-  response.end(JSON.stringify(payload));
-}
+    return new Promise((resolve) => {
+      request.on("data", (chunk) => {
+        chunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"));
+      });
 
-async function readRequestBody(
-  request: IncomingMessage
-): Promise<Record<string, unknown> | null> {
-  const chunks: string[] = [];
-
-  return new Promise((resolve) => {
-    request.on("data", (chunk) => {
-      chunks.push(typeof chunk === "string" ? chunk : chunk.toString("utf8"));
-    });
-
-    request.on("end", () => {
-      const raw = chunks.join("").trim();
-      if (!raw) {
-        resolve(null);
-        return;
-      }
-
-      try {
-        const parsed = JSON.parse(raw);
-        if (typeof parsed === "object" && parsed !== null) {
-          resolve(parsed as Record<string, unknown>);
+      request.on("end", () => {
+        const raw = chunks.join("").trim();
+        if (!raw) {
+          resolve(null);
           return;
         }
-      } catch {
+
+        try {
+          const parsed = JSON.parse(raw);
+          if (typeof parsed === "object" && parsed !== null) {
+            resolve(parsed as Record<string, unknown>);
+            return;
+          }
+        } catch {
+          resolve(null);
+          return;
+        }
+
         resolve(null);
-        return;
-      }
+      });
 
-      resolve(null);
+      request.on("error", () => resolve(null));
     });
+  }
 
-    request.on("error", () => resolve(null));
-  });
-}
-
-function isWithinRoot(candidatePath: string, root: string): boolean {
-  const relative = path.relative(root, candidatePath);
-  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative)
-    ? true
-    : candidatePath === root;
+  private isWithinRoot(candidatePath: string, root: string): boolean {
+    const relative = path.relative(root, candidatePath);
+    return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative)
+      ? true
+      : candidatePath === root;
+  }
 }
