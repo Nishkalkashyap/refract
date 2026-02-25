@@ -12,12 +12,12 @@ export interface ToolActionOperationRequest {
   input: unknown;
 }
 
-export interface ToolActionOperationSuccess {
+interface ToolActionOperationSuccess {
   ok: true;
   data?: unknown;
 }
 
-export interface ToolActionOperationFailure {
+interface ToolActionOperationFailure {
   ok: false;
   code: string;
   message: string;
@@ -28,7 +28,7 @@ export type ToolActionOperationResult =
   | ToolActionOperationSuccess
   | ToolActionOperationFailure;
 
-export interface ToolRuntimeOperationInvoker {
+interface ToolRuntimeOperationInvoker {
   (operation: string, input: unknown): Promise<ToolActionOperationResult>;
 }
 
