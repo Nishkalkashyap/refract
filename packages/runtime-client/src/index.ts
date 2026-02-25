@@ -1,3 +1,7 @@
+import { createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+
+import { TailwindEditorToolbarAdapter } from "./tailwind-toolbar-adapter";
 import type { ToolAction, ToolActionContext, ToolRuntimeInitOptions } from "./types";
 
 const HOST_ID = "__refract_tool_runtime_host";
@@ -5,6 +9,9 @@ const RUNTIME_KEY = "__REFRACT_TOOL_RUNTIME__";
 const DATA_FILE_ATTR = "data-tool-file";
 const DATA_LINE_ATTR = "data-tool-line";
 const DATA_COLUMN_ATTR = "data-tool-column";
+const TAILWIND_EDITOR_ACTION_ID = "tailwind-editor";
+const UPDATE_CLASSNAME_PATH = "/@tool/update-classname";
+const SAVE_DEBOUNCE_MS = 250;
 
 const STYLE_TEXT = `
 :host {
@@ -15,7 +22,7 @@ const STYLE_TEXT = `
   inset: 0;
   pointer-events: none;
   z-index: 2147483647;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
 }
 .fab {
   position: fixed;
@@ -103,7 +110,93 @@ const STYLE_TEXT = `
   font-size: 12px;
   color: #64748b;
 }
+.toolbar-host {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  top: 16px;
+  pointer-events: auto;
+  display: none;
+}
+.toolbar-shell {
+  border: 1px solid #d1d5db;
+  border-radius: 14px;
+  background: #f8fafc;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+  padding: 10px;
+}
+.toolbar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.toolbar-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toolbar-close {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.toolbar-close:hover {
+  background: #f1f5f9;
+}
+.toolbar-status {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #475569;
+}
+.toolbar-status[data-state="error"] {
+  color: #b91c1c;
+}
+.tailwind-toolbar-adapter {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+}
+.tailwind-toolbar-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+}
+.tailwind-toolbar-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #0f172a;
+  background: #ffffff;
+}
+.tailwind-toolbar-input:focus {
+  outline: 2px solid #bfdbfe;
+  outline-offset: 0;
+  border-color: #3b82f6;
+}
 `;
+
+type ToolbarSaveState = "idle" | "saving" | "error";
+
+type ClassNameUpdateResponse = {
+  ok: boolean;
+  code?: string;
+  message?: string;
+};
 
 declare global {
   interface Window {
@@ -122,8 +215,18 @@ class ToolRuntime {
   private actionMenu: HTMLDivElement;
   private actionMenuHeader: HTMLDivElement;
   private actionMenuList: HTMLDivElement;
+  private toolbarHost: HTMLDivElement;
+  private toolbarRoot: Root;
   private selectMode = false;
   private hoveredElement: HTMLElement | null = null;
+  private toolbarSession: ToolActionContext | null = null;
+  private toolbarValue = "";
+  private toolbarSaveState: ToolbarSaveState = "idle";
+  private toolbarErrorMessage = "";
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingPersistValue: string | null = null;
+  private persistRequestVersion = 0;
+  private isClosingToolbar = false;
 
   constructor(options: ToolRuntimeInitOptions) {
     this.options = options;
@@ -159,8 +262,12 @@ class ToolRuntime {
     this.actionMenuList = document.createElement("div");
     this.actionMenuList.className = "action-menu-list";
 
+    this.toolbarHost = document.createElement("div");
+    this.toolbarHost.className = "toolbar-host";
+    this.toolbarRoot = createRoot(this.toolbarHost);
+
     this.actionMenu.append(this.actionMenuHeader, this.actionMenuList);
-    this.root.append(this.fab, this.overlay, this.label, this.actionMenu);
+    this.root.append(this.fab, this.overlay, this.label, this.actionMenu, this.toolbarHost);
     this.shadow.append(style, this.root);
 
     this.fab.addEventListener("click", this.handleFabClick);
@@ -179,6 +286,7 @@ class ToolRuntime {
 
   updateOptions(options: ToolRuntimeInitOptions): void {
     this.options = options;
+    this.renderToolbar();
   }
 
   private handleFabClick = (): void => {
@@ -208,8 +316,18 @@ class ToolRuntime {
   }
 
   private handleKeyDown = (event: KeyboardEvent): void => {
-    if (event.key === "Escape" && this.selectMode) {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    if (this.selectMode) {
       this.setSelectMode(false);
+      return;
+    }
+
+    if (this.toolbarSession) {
+      event.preventDefault();
+      void this.closeToolbarWithFlush();
     }
   };
 
@@ -258,7 +376,7 @@ class ToolRuntime {
       return;
     }
 
-    this.executeAction(action, context);
+    this.invokeAction(action, context);
   };
 
   private handleContextMenu = (event: MouseEvent): void => {
@@ -323,12 +441,213 @@ class ToolRuntime {
     };
   }
 
-  private executeAction(action: ToolAction, context: ToolActionContext): void {
+  private invokeAction(action: ToolAction, context: ToolActionContext): void {
+    if (action.id === TAILWIND_EDITOR_ACTION_ID) {
+      this.openTailwindEditor(context);
+      this.setSelectMode(false);
+      return;
+    }
+
     try {
       action.run(context);
     } finally {
       this.setSelectMode(false);
     }
+  }
+
+  private openTailwindEditor(context: ToolActionContext): void {
+    this.toolbarSession = context;
+    this.toolbarValue = context.element.className ?? "";
+    this.toolbarSaveState = "idle";
+    this.toolbarErrorMessage = "";
+    this.pendingPersistValue = null;
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+
+    this.renderToolbar();
+  }
+
+  private handleToolbarValueChange = (next: string): void => {
+    if (!this.toolbarSession) {
+      return;
+    }
+
+    this.toolbarValue = next;
+    this.toolbarSession.element.className = next;
+    this.toolbarSaveState = "saving";
+    this.toolbarErrorMessage = "";
+    this.schedulePersist(next);
+    this.renderToolbar();
+  };
+
+  private schedulePersist(next: string): void {
+    this.pendingPersistValue = next;
+
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      const pendingValue = this.pendingPersistValue;
+      this.pendingPersistValue = null;
+      if (pendingValue !== null) {
+        void this.persistClassName(pendingValue);
+      }
+    }, SAVE_DEBOUNCE_MS);
+  }
+
+  private async persistClassName(next: string): Promise<void> {
+    if (!this.toolbarSession) {
+      return;
+    }
+
+    const requestVersion = ++this.persistRequestVersion;
+    this.toolbarSaveState = "saving";
+    this.toolbarErrorMessage = "";
+    this.renderToolbar();
+
+    try {
+      const response = await fetch(UPDATE_CLASSNAME_PATH, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          file: this.toolbarSession.file,
+          line: this.toolbarSession.line,
+          ...(typeof this.toolbarSession.column === "number"
+            ? { column: this.toolbarSession.column }
+            : {}),
+          nextClassName: next
+        })
+      });
+
+      const result = (await readJsonResponse(response)) as ClassNameUpdateResponse | null;
+      if (requestVersion !== this.persistRequestVersion) {
+        return;
+      }
+
+      if (response.ok && result?.ok) {
+        this.toolbarSaveState = "idle";
+        this.toolbarErrorMessage = "";
+        this.renderToolbar();
+        return;
+      }
+
+      this.toolbarSaveState = "error";
+      this.toolbarErrorMessage = result?.message ?? "Failed to persist className changes.";
+      this.renderToolbar();
+    } catch {
+      if (requestVersion !== this.persistRequestVersion) {
+        return;
+      }
+
+      this.toolbarSaveState = "error";
+      this.toolbarErrorMessage = "Unable to reach dev server for className updates.";
+      this.renderToolbar();
+    }
+  }
+
+  private handleToolbarCloseClick = (): void => {
+    void this.closeToolbarWithFlush();
+  };
+
+  private async closeToolbarWithFlush(): Promise<void> {
+    if (!this.toolbarSession || this.isClosingToolbar) {
+      return;
+    }
+
+    this.isClosingToolbar = true;
+    try {
+      await this.flushPendingPersist();
+    } finally {
+      this.isClosingToolbar = false;
+      this.teardownToolbar();
+    }
+  }
+
+  private async flushPendingPersist(): Promise<void> {
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+
+    const pendingValue = this.pendingPersistValue;
+    this.pendingPersistValue = null;
+
+    if (pendingValue === null) {
+      return;
+    }
+
+    await this.persistClassName(pendingValue);
+  }
+
+  private teardownToolbar(): void {
+    this.persistRequestVersion += 1;
+    this.toolbarSession = null;
+    this.toolbarValue = "";
+    this.toolbarSaveState = "idle";
+    this.toolbarErrorMessage = "";
+    this.toolbarHost.style.display = "none";
+    this.toolbarRoot.render(null);
+  }
+
+  private renderToolbar(): void {
+    if (!this.toolbarSession) {
+      this.toolbarHost.style.display = "none";
+      this.toolbarRoot.render(null);
+      return;
+    }
+
+    this.toolbarHost.style.display = "block";
+
+    let statusText = "Ready";
+    if (this.toolbarSaveState === "saving") {
+      statusText = "Saving...";
+    } else if (this.toolbarSaveState === "error") {
+      statusText = this.toolbarErrorMessage || "Failed to persist className changes.";
+    }
+
+    this.toolbarRoot.render(
+      createElement(
+        "div",
+        { className: "toolbar-shell" },
+        createElement(
+          "div",
+          { className: "toolbar-head" },
+          createElement(
+            "div",
+            { className: "toolbar-title" },
+            `${this.toolbarSession.file}:${this.toolbarSession.line}`
+          ),
+          createElement(
+            "button",
+            {
+              type: "button",
+              className: "toolbar-close",
+              onClick: this.handleToolbarCloseClick
+            },
+            "Close"
+          )
+        ),
+        createElement(TailwindEditorToolbarAdapter, {
+          value: this.toolbarValue,
+          onChange: this.handleToolbarValueChange
+        }),
+        createElement(
+          "div",
+          {
+            className: "toolbar-status",
+            "data-state": this.toolbarSaveState
+          },
+          statusText
+        )
+      )
+    );
   }
 
   private showActionMenu(clientX: number, clientY: number, context: ToolActionContext): void {
@@ -349,7 +668,7 @@ class ToolRuntime {
         button.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
-          this.executeAction(action, context);
+          this.invokeAction(action, context);
         });
         this.actionMenuList.append(button);
       }
@@ -428,3 +747,11 @@ export function initToolRuntime(options: ToolRuntimeInitOptions): void {
 }
 
 export type { ToolAction, ToolActionContext, ToolRuntimeInitOptions } from "./types";
+
+async function readJsonResponse(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}

@@ -15,6 +15,7 @@
     "@types/babel__traverse": "latest",
     "@refract/dummy-action": "workspace:*",
     "@refract/runtime-client": "workspace:*",
+    "@refract/tailwind-editor-action": "workspace:*",
     "vite": "latest"
   },
   "scripts": {

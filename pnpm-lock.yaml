@@ -61,7 +61,27 @@ importers:
         specifier: workspace:*
         version: link:../runtime-client
 
-  packages/runtime-client: {}
+  packages/runtime-client:
+    dependencies:
+      react:
+        specifier: latest
+        version: 19.2.4
+      react-dom:
+        specifier: latest
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@types/react':
+        specifier: latest
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: latest
+        version: 19.2.3(@types/react@19.2.14)
+
+  packages/tailwind-editor-action:
+    dependencies:
+      '@refract/runtime-client':
+        specifier: workspace:*
+        version: link:../runtime-client
 
   packages/vite-plugin:
     dependencies:
@@ -83,6 +103,9 @@ importers:
       '@refract/runtime-client':
         specifier: workspace:*
         version: link:../runtime-client
+      '@refract/tailwind-editor-action':
+        specifier: workspace:*
+        version: link:../tailwind-editor-action
       '@types/babel__generator':
         specifier: latest
         version: 7.27.0
