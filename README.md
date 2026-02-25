@@ -82,3 +82,8 @@ Plugin packages should export a `RefractPlugin` from their package entrypoint.
 - Optimized for JSX/TSX in Vite dev mode
 - Tailwind editor currently targets static `className` updates
 - Dynamic class expressions are intentionally rejected with a clear error
+
+## Disclaimer
+
+> Most of the code in this repository was generated with AI assistance.
+> All generated output was reviewed and supervised by humans.
