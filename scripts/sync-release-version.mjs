@@ -20,6 +20,7 @@ const publishablePackageJsonPaths = [
   "packages/tool-contracts/package.json",
   "packages/runtime-client/package.json",
   "packages/vite-plugin/package.json",
+  "packages/next-plugin/package.json",
   "refract-plugins/tailwind-editor-action/package.json"
 ];
 
