@@ -15,6 +15,18 @@ import {
 import type { TailwindEditorInvokePayload } from "./types.js";
 
 const SAVE_DEBOUNCE_MS = 250;
+const TAILWIND_EDITOR_SHADOW_COMPAT_CSS = `
+[data-tailwind-editor-root],
+[data-tailwind-editor-portal],
+[data-tailwind-editor-root] *,
+[data-tailwind-editor-root] *::before,
+[data-tailwind-editor-root] *::after,
+[data-tailwind-editor-portal] *,
+[data-tailwind-editor-portal] *::before,
+[data-tailwind-editor-portal] *::after {
+  --tw-border-style: solid;
+}
+`;
 
 type SaveState = "idle" | "saving" | "error";
 
@@ -36,6 +48,13 @@ function TailwindEditorPanel({
   useEffect(() => {
     invokeRef.current = server.invoke;
   }, [server]);
+
+  useEffect(() => {
+    portalContainer.setAttribute("data-tailwind-editor-portal", "true");
+    return () => {
+      portalContainer.removeAttribute("data-tailwind-editor-portal");
+    };
+  }, [portalContainer]);
 
   const persistNow = useCallback(async (next: string) => {
     const requestVersion = ++requestVersionRef.current;
@@ -136,6 +155,6 @@ export const tailwindEditorRuntimePlugin: RefractRuntimePlugin<TailwindEditorInv
   id: "tailwind-editor",
   label: "Tailwind Editor",
   onSelect: "open-panel",
-  panelStyles: [tailwindEditorCssText],
+  panelStyles: [tailwindEditorCssText, TAILWIND_EDITOR_SHADOW_COMPAT_CSS],
   Panel: TailwindEditorPanel
 };

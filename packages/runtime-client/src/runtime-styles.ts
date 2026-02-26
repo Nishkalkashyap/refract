@@ -109,6 +109,16 @@ export const panelSurfaceStyles = `
 :host {
   all: initial;
 }
+[data-refract-plugin-portal-root] {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483646;
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+}
+[data-refract-plugin-portal-root] > * {
+  pointer-events: auto;
+}
 .panel-host {
   position: fixed;
   left: 16px;
