@@ -8,7 +8,7 @@ Refract is composed of four primary layers:
 
 1. Vite plugin (`@nkstack/refract-vite-plugin`)
 2. Browser runtime (`@nkstack/refract-runtime-client`)
-3. Plugin modules (`actions/*`)
+3. Plugin modules (`refract-plugins/*`)
 4. Shared contracts (`@nkstack/refract-tool-contracts`)
 
 Flow at a high level:
@@ -144,7 +144,7 @@ Typical error responses include:
 
 To add a new plugin:
 
-1. Create plugin package under `actions/<name>`.
+1. Create plugin package under `refract-plugins/<name>`.
 2. Implement browser plugin (`inBrowserHandler` and optional `Panel`).
 3. Add optional `serverHandler`.
 4. Export final `RefractPlugin`.

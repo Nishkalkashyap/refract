@@ -6,7 +6,7 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "actions/*"
+    "refract-plugins/*"
   ],
   "scripts": {
     "dev": "pnpm --filter vite-example-app dev",

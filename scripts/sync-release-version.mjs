@@ -17,7 +17,7 @@ const publishablePackageJsonPaths = [
   "packages/tool-contracts/package.json",
   "packages/runtime-client/package.json",
   "packages/vite-plugin/package.json",
-  "actions/tailwind-editor-action/package.json"
+  "refract-plugins/tailwind-editor-action/package.json"
 ];
 
 for (const relativePath of publishablePackageJsonPaths) {

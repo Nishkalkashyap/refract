@@ -33,40 +33,6 @@ importers:
         specifier: latest
         version: 8.56.1(eslint@10.0.2)(typescript@5.9.3)
 
-  actions/tailwind-editor-action:
-    dependencies:
-      '@babel/generator':
-        specifier: latest
-        version: 7.29.1
-      '@babel/parser':
-        specifier: latest
-        version: 7.29.0
-      '@babel/traverse':
-        specifier: latest
-        version: 7.29.0
-      '@babel/types':
-        specifier: latest
-        version: 7.29.0
-      '@nkstack/refract-tool-contracts':
-        specifier: workspace:*
-        version: link:../../packages/tool-contracts
-      '@nkstack/tailwind-editor-react':
-        specifier: ^0.2.0
-        version: 0.2.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)
-      react:
-        specifier: latest
-        version: 19.2.4
-    devDependencies:
-      '@types/babel__generator':
-        specifier: latest
-        version: 7.27.0
-      '@types/babel__traverse':
-        specifier: latest
-        version: 7.28.0
-      '@types/react':
-        specifier: latest
-        version: 19.2.14
-
   apps/next-example-app:
     dependencies:
       '@nkstack/refract-next-plugin':
@@ -77,7 +43,7 @@ importers:
         version: link:../../packages/runtime-client
       '@nkstack/refract-tailwind-editor-action':
         specifier: workspace:*
-        version: link:../../actions/tailwind-editor-action
+        version: link:../../refract-plugins/tailwind-editor-action
       next:
         specifier: ^16.0.0
         version: 16.1.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -108,7 +74,7 @@ importers:
         version: link:../../packages/runtime-client
       '@nkstack/refract-tailwind-editor-action':
         specifier: workspace:*
-        version: link:../../actions/tailwind-editor-action
+        version: link:../../refract-plugins/tailwind-editor-action
       '@nkstack/refract-tool-contracts':
         specifier: workspace:*
         version: link:../../packages/tool-contracts
@@ -210,6 +176,40 @@ importers:
       vite:
         specifier: latest
         version: 7.3.1(@types/node@25.3.0)(tsx@4.21.0)
+
+  refract-plugins/tailwind-editor-action:
+    dependencies:
+      '@babel/generator':
+        specifier: latest
+        version: 7.29.1
+      '@babel/parser':
+        specifier: latest
+        version: 7.29.0
+      '@babel/traverse':
+        specifier: latest
+        version: 7.29.0
+      '@babel/types':
+        specifier: latest
+        version: 7.29.0
+      '@nkstack/refract-tool-contracts':
+        specifier: workspace:*
+        version: link:../../packages/tool-contracts
+      '@nkstack/tailwind-editor-react':
+        specifier: ^0.2.0
+        version: 0.2.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(tailwindcss@4.2.1)
+      react:
+        specifier: latest
+        version: 19.2.4
+    devDependencies:
+      '@types/babel__generator':
+        specifier: latest
+        version: 7.27.0
+      '@types/babel__traverse':
+        specifier: latest
+        version: 7.28.0
+      '@types/react':
+        specifier: latest
+        version: 19.2.14
 
 packages:
 
