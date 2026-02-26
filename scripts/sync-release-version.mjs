@@ -1,10 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const version = process.argv[2];
+const rootPkgPath = path.resolve("package.json");
+const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, "utf8"));
+const version = process.argv[2] ?? rootPkg.version;
 
 if (!version) {
   console.error("Usage: node scripts/sync-release-version.mjs <version>");
+  console.error("   Or set \"version\" in root package.json and run without arguments.");
   process.exit(1);
 }
 
