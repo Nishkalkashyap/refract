@@ -1,32 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 
-import type { RefractRuntimeInitOptions, RefractRuntimePlugin } from "@nkstack/refract-tool-contracts";
+import type { RefractRuntimeInitOptions } from "@nkstack/refract-tool-contracts";
 
 import { ActionMenu, type ActionMenuState } from "./ActionMenu";
-import { PanelHost } from "./PanelHost";
+import { PANEL_CLOSE_REQUEST_EVENT } from "./panel-events";
+import type { PanelSession } from "./panel-session";
 import { RuntimeFab } from "./RuntimeFab";
-import type { RuntimeSelectionTarget } from "./runtime-dom";
 import { SelectionOverlay } from "./SelectionOverlay";
 import { useActionExecutor } from "./useActionExecutor";
 import { useSelectionMode } from "./useSelectionMode";
 import { useToolOperationClient } from "./useToolOperationClient";
 
 interface ToolRuntimeAppProps {
-  hostElement: HTMLElement;
   options: RefractRuntimeInitOptions;
+  onPanelSessionChange: (session: PanelSession | null) => void;
 }
 
-interface PanelSession {
-  plugin: RefractRuntimePlugin;
-  selectionRef: RuntimeSelectionTarget["selectionRef"];
-  element: HTMLElement;
-  anchorPoint: {
-    x: number;
-    y: number;
-  };
-}
-
-export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
+export function ToolRuntimeApp({ options, onPanelSessionChange }: ToolRuntimeAppProps) {
   const [selectMode, setSelectMode] = useState(false);
   const [actionMenu, setActionMenu] = useState<ActionMenuState | null>(null);
   const [panelSession, setPanelSession] = useState<PanelSession | null>(null);
@@ -61,9 +51,19 @@ export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [panelSession, selectMode]);
 
+  useEffect(() => {
+    const onPanelCloseRequested = () => {
+      setPanelSession(null);
+    };
+
+    window.addEventListener(PANEL_CLOSE_REQUEST_EVENT, onPanelCloseRequested);
+    return () => {
+      window.removeEventListener(PANEL_CLOSE_REQUEST_EVENT, onPanelCloseRequested);
+    };
+  }, []);
+
   const hoveredTarget = useSelectionMode({
     enabled: selectMode,
-    hostElement,
     onPrimarySelect: (target, position) => {
       if (!defaultPlugin) {
         return;
@@ -87,6 +87,14 @@ export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
     }
   });
 
+  useEffect(() => {
+    onPanelSessionChange(panelSession);
+
+    return () => {
+      onPanelSessionChange(null);
+    };
+  }, [onPanelSessionChange, panelSession]);
+
   return (
     <div className="runtime-root">
       <RuntimeFab active={selectMode} onToggle={() => setSelectMode((current) => !current)} />
@@ -108,16 +116,6 @@ export function ToolRuntimeApp({ hostElement, options }: ToolRuntimeAppProps) {
               y: actionMenu.y
             });
           }}
-        />
-      ) : null}
-
-      {panelSession ? (
-        <PanelHost
-          session={panelSession}
-          onClose={() => {
-            setPanelSession(null);
-          }}
-          invokeServer={invokeServer}
         />
       ) : null}
     </div>

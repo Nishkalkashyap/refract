@@ -2,7 +2,8 @@
 
 Browser runtime UI for Refract.
 
-This package renders selection mode, overlay, action menu, and plugin panels in a Shadow DOM host.
+This package renders selection mode, overlay, and action menu in a runtime ShadowRoot.
+Each plugin panel is mounted in its own dedicated ShadowRoot.
 
 ## Install
 

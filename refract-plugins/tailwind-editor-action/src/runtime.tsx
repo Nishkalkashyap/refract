@@ -1,5 +1,3 @@
-/// <reference path="./css.d.ts" />
-
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -9,38 +7,21 @@ import {
   type RefractRuntimePlugin,
   type RefractServerResult
 } from "@nkstack/refract-tool-contracts";
-import { TailwindInspectorToolbar } from "@nkstack/tailwind-editor-react";
+import {
+  TailwindInspectorToolbar,
+  tailwindEditorCssText
+} from "@nkstack/tailwind-editor-react/unstyled";
 
 import type { TailwindEditorInvokePayload } from "./types.js";
 
 const SAVE_DEBOUNCE_MS = 250;
-let tailwindEditorStylesPromise: Promise<void> | null = null;
-
-function ensureTailwindEditorStyles(): Promise<void> {
-  if (typeof document === "undefined") {
-    return Promise.resolve();
-  }
-
-  if (!tailwindEditorStylesPromise) {
-    // Load CSS only in the browser. Static CSS imports here are evaluated in
-    // server/build contexts (for example Vite plugin config loading) and can
-    // fail with unknown ".css" module errors.
-    tailwindEditorStylesPromise = import("@nkstack/tailwind-editor-react/style.css")
-      .then(() => undefined)
-      .catch((error: unknown) => {
-        tailwindEditorStylesPromise = null;
-        throw error;
-      });
-  }
-
-  return tailwindEditorStylesPromise;
-}
 
 type SaveState = "idle" | "saving" | "error";
 
 function TailwindEditorPanel({
   element,
-  server
+  server,
+  portalContainer
 }: RefractPanelProps<TailwindEditorInvokePayload>) {
   const [value, setValue] = useState(() => element.className ?? "");
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -139,7 +120,11 @@ function TailwindEditorPanel({
 
   return (
     <>
-      <TailwindInspectorToolbar value={value} onChange={handleChange} />
+      <TailwindInspectorToolbar
+        value={value}
+        onChange={handleChange}
+        portalContainer={portalContainer}
+      />
       <div className="tool-panel-status" data-state={saveState}>
         {statusText}
       </div>
@@ -150,14 +135,7 @@ function TailwindEditorPanel({
 export const tailwindEditorRuntimePlugin: RefractRuntimePlugin<TailwindEditorInvokePayload> = {
   id: "tailwind-editor",
   label: "Tailwind Editor",
-  async inBrowserHandler({ ui }) {
-    try {
-      await ensureTailwindEditorStyles();
-    } catch {
-      // Failing to load styles should not block the editor panel from opening.
-    }
-
-    ui.openPanel();
-  },
+  onSelect: "open-panel",
+  panelStyles: [tailwindEditorCssText],
   Panel: TailwindEditorPanel
 };

@@ -34,5 +34,16 @@ export default [
         }
       ]
     }
+  },
+  {
+    files: ["refract-plugins/*/src/runtime*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: ["**/*.css", "**/*.css?*"]
+        }
+      ]
+    }
   }
 ];

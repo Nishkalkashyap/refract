@@ -11,7 +11,7 @@ interface InvokePayload {
 const runtimePlugin: RefractRuntimePlugin<InvokePayload> = {
   id: "example",
   label: "Example",
-  inBrowserHandler() {}
+  onSelect: "none"
 };
 
 const serverPlugin: RefractServerPlugin<InvokePayload> = {
@@ -79,5 +79,39 @@ test("createRefractRegistry rejects invalid defaultPluginId", () => {
         defaultPluginId: "missing"
       }),
     /defaultPluginId/i
+  );
+});
+
+test("createRefractRegistry rejects open-panel without Panel", () => {
+  assert.throws(
+    () =>
+      createRefractRegistry({
+        plugins: [
+          {
+            runtime: {
+              ...runtimePlugin,
+              onSelect: "open-panel"
+            }
+          }
+        ]
+      }),
+    /onSelect='open-panel'/i
+  );
+});
+
+test("createRefractRegistry rejects non-string panelStyles entries", () => {
+  assert.throws(
+    () =>
+      createRefractRegistry({
+        plugins: [
+          {
+            runtime: {
+              ...runtimePlugin,
+              panelStyles: ["ok", 123 as unknown as string]
+            }
+          }
+        ]
+      }),
+    /panelStyles/i
   );
 });

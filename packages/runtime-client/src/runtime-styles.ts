@@ -1,4 +1,4 @@
-export const runtimeStyles = `
+export const runtimeShellStyles = `
 :host {
   all: initial;
 }
@@ -103,12 +103,20 @@ export const runtimeStyles = `
 .action-menu-item:hover {
   background: #eff6ff;
 }
+`;
+
+export const panelSurfaceStyles = `
+:host {
+  all: initial;
+}
 .panel-host {
   position: fixed;
   left: 16px;
   right: 16px;
   top: 16px;
   pointer-events: auto;
+  z-index: 2147483630;
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
 }
 .panel-host[data-mode="anchored"] {
   left: 0;
@@ -161,44 +169,5 @@ export const runtimeStyles = `
 }
 .tool-panel-status[data-state="error"] {
   color: #b91c1c;
-}
-.tailwind-toolbar-adapter {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 10px;
-}
-.tailwind-toolbar-label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #334155;
-}
-.tailwind-toolbar-input {
-  width: 100%;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 13px;
-  color: #0f172a;
-  background: #ffffff;
-}
-.tailwind-toolbar-input:focus {
-  outline: 2px solid #bfdbfe;
-  outline-offset: 0;
-  border-color: #3b82f6;
-}
-`;
-
-export const runtimeDocumentStyles = `
-/* Radix popover/menu/select content portals to document.body by default, not
-   inside Refract's ShadowRoot. Force those layers above the runtime shell so
-   toolbar overlays are visible and clickable. */
-body[data-refract-tool-runtime="active"] [data-radix-popper-content-wrapper],
-body[data-refract-tool-runtime="active"] [data-radix-select-content],
-body[data-refract-tool-runtime="active"] [data-radix-menu-content],
-body[data-refract-tool-runtime="active"] [data-radix-menubar-content] {
-  z-index: 2147483647 !important;
 }
 `;

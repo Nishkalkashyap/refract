@@ -30,7 +30,7 @@
     "@babel/traverse": "latest",
     "@babel/types": "latest",
     "@nkstack/refract-tool-contracts": "workspace:*",
-    "@nkstack/tailwind-editor-react": "^0.2.0",
+    "@nkstack/tailwind-editor-react": "link:../../../tailwind-editor/packages/react",
     "react": "latest"
   },
   "devDependencies": {

@@ -18,6 +18,12 @@ pnpm add @nkstack/refract-tool-contracts
 - `RefractServerContext`
 - `RefractServerResult`
 
+## Runtime Plugin Notes
+
+- `onSelect` controls selection behavior (`"open-panel"` or `"none"`).
+- `panelStyles` accepts CSS text strings injected into the plugin panel ShadowRoot.
+- Plugin panels receive `portalContainer` and `shadowRoot` in `RefractPanelProps`.
+
 ## Registry Helper
 
 ```ts

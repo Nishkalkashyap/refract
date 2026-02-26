@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 
 import type {
+  RefractBrowserContext,
+  RefractSelectAction,
   RefractRuntimePlugin,
   RefractSelectionRef,
   RefractServerResult
@@ -41,32 +43,43 @@ export function useActionExecutor(options: UseActionExecutorOptions) {
       closeSelectMode();
       closePanel();
 
-      Promise.resolve(
-        plugin.inBrowserHandler({
-          selectionRef: target.selectionRef,
-          element: target.element,
-          ui: {
-            openPanel: () => {
-              if (!plugin.Panel) {
-                return;
-              }
+      const selectionContext: RefractBrowserContext = {
+        selectionRef: target.selectionRef,
+        element: target.element,
+        server: {
+          invoke: (payload) => invokeServer(plugin.id, target.selectionRef, payload)
+        }
+      };
 
-              openPanel({
-                plugin,
-                selectionRef: target.selectionRef,
-                element: target.element,
-                anchorPoint: interactionPoint
-              });
-            },
-            closePanel
-          },
-          server: {
-            invoke: (payload) => invokeServer(plugin.id, target.selectionRef, payload)
+      const resolveAction = async (): Promise<RefractSelectAction> => {
+        const onSelect = plugin.onSelect;
+        if (!onSelect) {
+          return plugin.Panel ? "open-panel" : "none";
+        }
+
+        if (typeof onSelect === "function") {
+          return onSelect(selectionContext);
+        }
+
+        return onSelect;
+      };
+
+      Promise.resolve(resolveAction())
+        .then((action) => {
+          if (action !== "open-panel" || !plugin.Panel) {
+            return;
           }
+
+          openPanel({
+            plugin,
+            selectionRef: target.selectionRef,
+            element: target.element,
+            anchorPoint: interactionPoint
+          });
         })
-      ).catch(() => {
-        // Intentionally swallow runtime plugin exceptions to keep refract responsive.
-      });
+        .catch(() => {
+          // Intentionally swallow runtime plugin exceptions to keep refract responsive.
+        });
     },
     [clearContextMenu, closePanel, closeSelectMode, invokeServer, openPanel]
   );

@@ -2,23 +2,15 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 
 import type {
   RefractPanelProps,
-  RefractRuntimePlugin,
   RefractSelectionRef,
   RefractServerResult
 } from "@nkstack/refract-tool-contracts";
-
-interface PanelSession {
-  plugin: RefractRuntimePlugin;
-  selectionRef: RefractSelectionRef;
-  element: HTMLElement;
-  anchorPoint: {
-    x: number;
-    y: number;
-  };
-}
+import type { PanelSession } from "./panel-session";
 
 interface PanelHostProps {
   session: PanelSession;
+  shadowRoot: ShadowRoot;
+  portalContainer: HTMLElement;
   onClose: () => void;
   invokeServer: (
     pluginId: string,
@@ -34,7 +26,13 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-export function PanelHost({ session, onClose, invokeServer }: PanelHostProps) {
+export function PanelHost({
+  session,
+  shadowRoot,
+  portalContainer,
+  onClose,
+  invokeServer
+}: PanelHostProps) {
   const [anchoredPosition, setAnchoredPosition] = useState<{ left: number; top: number } | null>(
     null
   );
@@ -128,6 +126,8 @@ export function PanelHost({ session, onClose, invokeServer }: PanelHostProps) {
           selectionRef={session.selectionRef}
           element={session.element}
           closePanel={onClose}
+          portalContainer={portalContainer}
+          shadowRoot={shadowRoot}
           server={{
             invoke: (payload) => invokeServer(session.plugin.id, session.selectionRef, payload)
           }}

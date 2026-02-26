@@ -1,14 +1,19 @@
 import { createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
-import type { RefractRuntimeInitOptions } from "@nkstack/refract-tool-contracts";
+import type { RefractRuntimeInitOptions, RefractSelectionRef, RefractServerResult } from "@nkstack/refract-tool-contracts";
 
-import { runtimeDocumentStyles, runtimeStyles } from "./runtime-styles";
+import { PanelHost } from "./PanelHost";
+import { PANEL_CLOSE_REQUEST_EVENT } from "./panel-events";
+import type { PanelSession } from "./panel-session";
+import { markRuntimeOwned } from "./runtime-dom";
+import { panelSurfaceStyles, runtimeShellStyles } from "./runtime-styles";
 import { ToolRuntimeApp } from "./ToolRuntimeApp";
+import { DEFAULT_PLUGIN_ENDPOINT, invokeToolOperation } from "./useToolOperationClient";
 
 const HOST_ID = "__refract_tool_runtime_host";
+const PANEL_HOST_ID = "__refract_tool_runtime_panel_host";
 const RUNTIME_KEY = "__REFRACT_TOOL_RUNTIME__";
-const DOCUMENT_STYLE_ID = "__refract_tool_runtime_document_styles";
 
 declare global {
   interface Window {
@@ -16,160 +21,129 @@ declare global {
   }
 }
 
-function ensureRuntimeDocumentStyles(): void {
-  let styleTag = document.getElementById(DOCUMENT_STYLE_ID);
-  if (!(styleTag instanceof HTMLStyleElement)) {
-    styleTag = document.createElement("style");
-    styleTag.id = DOCUMENT_STYLE_ID;
-    document.head.appendChild(styleTag);
-  }
-
-  styleTag.textContent = runtimeDocumentStyles;
+interface PanelSurface {
+  host: HTMLDivElement;
+  shadowRoot: ShadowRoot;
+  portalContainer: HTMLDivElement;
+  root: Root;
 }
 
 class RefractRuntimeBridge {
-  private readonly host: HTMLDivElement;
-  private readonly shadowRoot: ShadowRoot;
-  private readonly mirroredStyleContainer: HTMLDivElement;
-  private readonly root: Root;
-  private readonly headObserver: MutationObserver;
+  private readonly shellHost: HTMLDivElement;
+  private readonly shellShadowRoot: ShadowRoot;
+  private readonly shellRoot: Root;
   private options: RefractRuntimeInitOptions;
-  private mirrorSyncQueued = false;
+  private panelSurface: PanelSurface | null = null;
 
   constructor(options: RefractRuntimeInitOptions) {
     this.options = options;
 
-    this.host = document.createElement("div");
-    this.host.id = HOST_ID;
+    this.shellHost = document.createElement("div");
+    this.shellHost.id = HOST_ID;
+    markRuntimeOwned(this.shellHost);
 
-    this.shadowRoot = this.host.attachShadow({ mode: "open" });
-    this.mirroredStyleContainer = document.createElement("div");
-    this.mirroredStyleContainer.setAttribute("data-refract-style-mirror", "true");
-
-    const style = document.createElement("style");
-    style.textContent = runtimeStyles;
-
+    this.shellShadowRoot = this.shellHost.attachShadow({ mode: "open" });
+    const style = this.createStyleElement(runtimeShellStyles);
     const mountPoint = document.createElement("div");
-    this.shadowRoot.append(this.mirroredStyleContainer, style, mountPoint);
-    this.syncMirroredStyles();
-    this.headObserver = new MutationObserver(() => {
-      this.scheduleMirroredStyleSync();
-    });
-    this.observeHeadForStyleChanges();
 
-    this.root = createRoot(mountPoint);
+    this.shellShadowRoot.append(style, mountPoint);
+    this.shellRoot = createRoot(mountPoint);
   }
 
   mount(): void {
-    const existingHost = document.getElementById(HOST_ID);
-    if (existingHost) {
-      existingHost.remove();
-    }
+    document.getElementById(HOST_ID)?.remove();
+    document.getElementById(PANEL_HOST_ID)?.remove();
 
-    ensureRuntimeDocumentStyles();
-    document.body.setAttribute("data-refract-tool-runtime", "active");
-    document.body.appendChild(this.host);
+    document.body.appendChild(this.shellHost);
     this.render();
   }
 
   updateOptions(options: RefractRuntimeInitOptions): void {
     this.options = options;
-    this.syncMirroredStyles();
     this.render();
   }
 
   private render(): void {
-    this.root.render(
+    this.shellRoot.render(
       createElement(ToolRuntimeApp, {
-        hostElement: this.host,
-        options: this.options
+        options: this.options,
+        onPanelSessionChange: (session: PanelSession | null) => {
+          this.syncPanelSurface(session);
+        }
       })
     );
   }
 
-  private observeHeadForStyleChanges(): void {
-    if (!document.head) {
+  private syncPanelSurface(session: PanelSession | null): void {
+    if (!session || !session.plugin.Panel) {
+      this.disposePanelSurface();
       return;
     }
 
-    this.headObserver.observe(document.head, {
-      subtree: true,
-      childList: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: ["href", "media", "rel"]
-    });
+    this.disposePanelSurface();
+    this.panelSurface = this.createPanelSurface(session);
+    document.body.appendChild(this.panelSurface.host);
+
+    this.panelSurface.root.render(
+      createElement(PanelHost, {
+        session,
+        shadowRoot: this.panelSurface.shadowRoot,
+        portalContainer: this.panelSurface.portalContainer,
+        onClose: () => window.dispatchEvent(new Event(PANEL_CLOSE_REQUEST_EVENT)),
+        invokeServer: (
+          pluginId: string,
+          selectionRef: RefractSelectionRef,
+          payload: unknown
+        ): Promise<RefractServerResult> => {
+          return invokeToolOperation(
+            this.options.serverEndpoint ?? DEFAULT_PLUGIN_ENDPOINT,
+            pluginId,
+            selectionRef,
+            payload
+          );
+        }
+      })
+    );
   }
 
-  private scheduleMirroredStyleSync(): void {
-    if (this.mirrorSyncQueued) {
-      return;
-    }
+  private createPanelSurface(session: PanelSession): PanelSurface {
+    const host = document.createElement("div");
+    host.id = PANEL_HOST_ID;
+    markRuntimeOwned(host);
 
-    this.mirrorSyncQueued = true;
-    queueMicrotask(() => {
-      this.mirrorSyncQueued = false;
-      this.syncMirroredStyles();
-    });
+    const shadowRoot = host.attachShadow({ mode: "open" });
+    const baseStyleTag = this.createStyleElement(panelSurfaceStyles);
+    const pluginStyles = session.plugin.panelStyles ?? [];
+    const pluginStyleTags = pluginStyles.map((styleText) => this.createStyleElement(styleText));
+
+    const mountPoint = document.createElement("div");
+    const portalContainer = document.createElement("div");
+    portalContainer.setAttribute("data-refract-plugin-portal-root", "true");
+
+    shadowRoot.append(baseStyleTag, ...pluginStyleTags, mountPoint, portalContainer);
+
+    return {
+      host,
+      shadowRoot,
+      portalContainer,
+      root: createRoot(mountPoint)
+    };
   }
 
-  private syncMirroredStyles(): void {
-    if (!document.head) {
+  private createStyleElement(styleText: string): HTMLStyleElement {
+    const style = document.createElement("style");
+    style.textContent = styleText;
+    return style;
+  }
+
+  private disposePanelSurface(): void {
+    if (!this.panelSurface) {
       return;
     }
 
-    const mirroredNodes: Array<HTMLStyleElement | HTMLLinkElement> = [];
-    const sourceNodes = document.head.querySelectorAll("style, link[rel='stylesheet']");
-
-    for (const sourceNode of sourceNodes) {
-      if (sourceNode instanceof HTMLStyleElement) {
-        const clonedStyle = document.createElement("style");
-        const media = sourceNode.getAttribute("media");
-        const nonce = sourceNode.getAttribute("nonce");
-
-        if (media) {
-          clonedStyle.setAttribute("media", media);
-        }
-        if (nonce) {
-          clonedStyle.setAttribute("nonce", nonce);
-        }
-
-        clonedStyle.textContent = sourceNode.textContent ?? "";
-        mirroredNodes.push(clonedStyle);
-        continue;
-      }
-
-      if (sourceNode instanceof HTMLLinkElement && sourceNode.href) {
-        const clonedLink = document.createElement("link");
-        const nonce = sourceNode.getAttribute("nonce");
-        const crossOrigin = sourceNode.getAttribute("crossorigin");
-        const integrity = sourceNode.getAttribute("integrity");
-        const referrerPolicy = sourceNode.getAttribute("referrerpolicy");
-
-        clonedLink.rel = "stylesheet";
-        clonedLink.href = sourceNode.href;
-
-        if (sourceNode.media) {
-          clonedLink.media = sourceNode.media;
-        }
-        if (nonce) {
-          clonedLink.setAttribute("nonce", nonce);
-        }
-        if (crossOrigin !== null) {
-          clonedLink.setAttribute("crossorigin", crossOrigin);
-        }
-        if (integrity) {
-          clonedLink.integrity = integrity;
-        }
-        if (referrerPolicy) {
-          clonedLink.referrerPolicy = referrerPolicy;
-        }
-
-        mirroredNodes.push(clonedLink);
-      }
-    }
-
-    this.mirroredStyleContainer.replaceChildren(...mirroredNodes);
+    this.panelSurface.root.unmount();
+    this.panelSurface.host.remove();
+    this.panelSurface = null;
   }
 }
 

@@ -3,6 +3,7 @@ import type { RefractSelectionRef } from "@nkstack/refract-tool-contracts";
 const DATA_FILE_ATTR = "data-tool-file";
 const DATA_LINE_ATTR = "data-tool-line";
 const DATA_COLUMN_ATTR = "data-tool-column";
+const RUNTIME_OWNED_ATTR = "data-refract-owned";
 
 export interface RuntimeSelectionTarget {
   selectionRef: RefractSelectionRef;
@@ -10,18 +11,21 @@ export interface RuntimeSelectionTarget {
 }
 
 export function findInstrumentedElement(
-  target: EventTarget | null,
-  hostElement: HTMLElement
+  target: EventTarget | null
 ): HTMLElement | null {
   if (!(target instanceof Element)) {
     return null;
   }
 
-  if (hostElement.contains(target)) {
+  if (target.closest(`[${RUNTIME_OWNED_ATTR}]`)) {
     return null;
   }
 
   return target.closest(`[${DATA_FILE_ATTR}]`) as HTMLElement | null;
+}
+
+export function markRuntimeOwned(element: HTMLElement): void {
+  element.setAttribute(RUNTIME_OWNED_ATTR, "true");
 }
 
 export function toSelectionTarget(element: HTMLElement): RuntimeSelectionTarget | null {

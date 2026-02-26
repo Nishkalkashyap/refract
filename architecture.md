@@ -15,7 +15,7 @@ Flow at a high level:
 
 1. Vite plugin instruments JSX with source metadata (`data-tool-file`, `data-tool-line`, `data-tool-column`).
 2. Vite plugin injects an inline module script in dev HTML that bootstraps runtime from a plugin manifest.
-3. Runtime handles selection UX and dispatches plugin `inBrowserHandler`.
+3. Runtime handles selection UX and resolves plugin `onSelect`.
 4. Browser plugin code can call `server.invoke(payload)`.
 5. Vite plugin bridge dispatches to plugin-specific `serverHandler`.
 
@@ -79,7 +79,7 @@ This prevents runtime/plugin/server packages from drifting apart.
 - `SelectionOverlay.tsx`: hovered element highlight
 - `RuntimeFab.tsx`: select mode toggle
 - `ActionMenu.tsx`: right-click plugin chooser
-- `PanelHost.tsx`: renders plugin panel UI
+- `PanelHost.tsx`: renders plugin panel UI inside plugin-owned ShadowRoot
 - `useActionExecutor.ts`: unified plugin invocation logic
 - `useToolOperationClient.ts`: typed client for `/@refract/plugin`
 - `runtime-dom.ts`: DOM/metadata extraction utilities
@@ -87,8 +87,9 @@ This prevents runtime/plugin/server packages from drifting apart.
 
 Design constraints:
 - Runtime core does not hardcode plugin IDs.
-- Runtime always executes `plugin.inBrowserHandler(...)`.
-- Panel rendering is opt-in via `ctx.ui.openPanel()` and plugin `Panel`.
+- Plugin UI always renders in plugin-owned ShadowRoot.
+- Runtime resolves `plugin.onSelect` and opens panel only for `"open-panel"`.
+- Plugin styles are injected via `plugin.panelStyles` CSS text.
 
 ## 6. Plugin Module Pattern
 
@@ -101,7 +102,7 @@ Typical structure:
   - `defineRefractBrowserPlugin(import.meta.url, { ... })`
 - Implements:
   - `id`, `label`
-  - `inBrowserHandler`
+  - `onSelect`
   - optional `Panel`
 
 2. Server module (`server.ts`) (optional)
@@ -114,7 +115,7 @@ Typical structure:
 
 ### Tailwind Editor Plugin
 
-- Browser behavior: opens panel
+- Browser behavior: `onSelect: "open-panel"`
 - Panel behavior:
   - optimistic preview (`element.className = next`)
   - debounced `server.invoke({ kind: "updateClassName", nextClassName })`
@@ -145,7 +146,7 @@ Typical error responses include:
 To add a new plugin:
 
 1. Create plugin package under `refract-plugins/<name>`.
-2. Implement browser plugin (`inBrowserHandler` and optional `Panel`).
+2. Implement browser plugin (`onSelect` and optional `Panel`).
 3. Add optional `serverHandler`.
 4. Export final `RefractPlugin`.
 5. Register in app Vite config via `refract({ plugins: [...] })`.

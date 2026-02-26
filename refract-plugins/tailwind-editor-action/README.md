@@ -25,6 +25,8 @@ pnpm add @nkstack/refract-tailwind-editor-action
 - Applies optimistic preview (`element.className = next`)
 - Debounces persistence calls to server handler
 - Updates static JSX `className` via AST transform
+- Injects editor CSS into plugin panel ShadowRoot via `panelStyles`
+- Mounts Radix portals into runtime-provided `portalContainer`
 
 ## Limitation
 

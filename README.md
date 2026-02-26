@@ -49,8 +49,9 @@ Refract plugins are split by runtime/server concern:
 interface RefractRuntimePlugin {
   id: string;
   label: string;
-  inBrowserHandler: (ctx: RefractBrowserContext) => void | Promise<void>;
+  onSelect?: "open-panel" | "none" | ((ctx: RefractBrowserContext) => "open-panel" | "none" | Promise<"open-panel" | "none">);
   Panel?: (props: RefractPanelProps) => unknown;
+  panelStyles?: string[]; // CSS text injected into plugin panel ShadowRoot
 }
 
 interface RefractServerPlugin {

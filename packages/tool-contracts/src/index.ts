@@ -45,30 +45,35 @@ export interface RefractPanelProps<InvokePayload = unknown, InvokeResult = unkno
   selectionRef: RefractSelectionRef;
   element: HTMLElement;
   closePanel: () => void;
+  portalContainer: HTMLElement;
+  shadowRoot: ShadowRoot;
   server: {
     invoke: (payload: InvokePayload) => Promise<RefractServerResult<InvokeResult>>;
   };
 }
+
+export type RefractSelectAction = "open-panel" | "none";
 
 export interface RefractBrowserContext<InvokePayload = unknown, InvokeResult = unknown> {
   selectionRef: RefractSelectionRef;
   element: HTMLElement;
-  ui: {
-    openPanel: () => void;
-    closePanel: () => void;
-  };
   server: {
     invoke: (payload: InvokePayload) => Promise<RefractServerResult<InvokeResult>>;
   };
 }
 
+export type RefractSelectionHandler<InvokePayload = unknown, InvokeResult = unknown> = (
+  context: RefractBrowserContext<InvokePayload, InvokeResult>
+) => RefractSelectAction | Promise<RefractSelectAction>;
+
 export interface RefractRuntimePlugin<InvokePayload = unknown, InvokeResult = unknown> {
   id: string;
   label: string;
-  inBrowserHandler: (
-    context: RefractBrowserContext<InvokePayload, InvokeResult>
-  ) => void | Promise<void>;
+  onSelect?:
+    | RefractSelectAction
+    | RefractSelectionHandler<InvokePayload, InvokeResult>;
   Panel?: (props: RefractPanelProps<InvokePayload, InvokeResult>) => unknown;
+  panelStyles?: string[];
 }
 
 export interface RefractServerPlugin<InvokePayload = unknown, InvokeResult = unknown> {
@@ -129,12 +134,35 @@ export function createRefractRegistry(options: {
       throw new Error(`Runtime plugin id '${runtimeId}' is duplicated.`);
     }
 
+    if (typeof runtimePlugin.label !== "string") {
+      throw new Error(`Runtime plugin '${runtimeId}' must define label.`);
+    }
+
+    const onSelect = runtimePlugin.onSelect;
     if (
-      typeof runtimePlugin.label !== "string" ||
-      typeof runtimePlugin.inBrowserHandler !== "function"
+      typeof onSelect !== "undefined" &&
+      typeof onSelect !== "function" &&
+      onSelect !== "open-panel" &&
+      onSelect !== "none"
     ) {
       throw new Error(
-        `Runtime plugin '${runtimeId}' must define label and inBrowserHandler.`
+        `Runtime plugin '${runtimeId}' has an invalid onSelect value.`
+      );
+    }
+
+    if (onSelect === "open-panel" && typeof runtimePlugin.Panel !== "function") {
+      throw new Error(
+        `Runtime plugin '${runtimeId}' cannot use onSelect='open-panel' without Panel.`
+      );
+    }
+
+    if (
+      typeof runtimePlugin.panelStyles !== "undefined" &&
+      (!Array.isArray(runtimePlugin.panelStyles) ||
+        runtimePlugin.panelStyles.some((value) => typeof value !== "string"))
+    ) {
+      throw new Error(
+        `Runtime plugin '${runtimeId}' has an invalid panelStyles value.`
       );
     }
 

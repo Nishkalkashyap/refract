@@ -5,7 +5,6 @@ import { findInstrumentedElement, toSelectionTarget } from "./runtime-dom";
 
 interface UseSelectionModeOptions {
   enabled: boolean;
-  hostElement: HTMLElement;
   onPrimarySelect: (target: RuntimeSelectionTarget, position: { x: number; y: number }) => void;
   onContextSelect: (target: RuntimeSelectionTarget, position: { x: number; y: number }) => void;
   onClearIntent: () => void;
@@ -15,7 +14,6 @@ interface UseSelectionModeOptions {
 export function useSelectionMode(options: UseSelectionModeOptions): RuntimeSelectionTarget | null {
   const {
     enabled,
-    hostElement,
     onPrimarySelect,
     onContextSelect,
     onClearIntent,
@@ -31,11 +29,7 @@ export function useSelectionMode(options: UseSelectionModeOptions): RuntimeSelec
     }
 
     const onMouseMove = (event: MouseEvent) => {
-      if (event.target instanceof Node && hostElement.contains(event.target)) {
-        return;
-      }
-
-      const element = findInstrumentedElement(event.target, hostElement);
+      const element = findInstrumentedElement(event.target);
       if (!element) {
         setHoveredTarget(null);
         return;
@@ -45,11 +39,7 @@ export function useSelectionMode(options: UseSelectionModeOptions): RuntimeSelec
     };
 
     const onClick = (event: MouseEvent) => {
-      if (event.target instanceof Node && hostElement.contains(event.target)) {
-        return;
-      }
-
-      const element = findInstrumentedElement(event.target, hostElement);
+      const element = findInstrumentedElement(event.target);
       if (!element) {
         onClearIntent();
         return;
@@ -66,11 +56,7 @@ export function useSelectionMode(options: UseSelectionModeOptions): RuntimeSelec
     };
 
     const onContextMenu = (event: MouseEvent) => {
-      if (event.target instanceof Node && hostElement.contains(event.target)) {
-        return;
-      }
-
-      const element = findInstrumentedElement(event.target, hostElement);
+      const element = findInstrumentedElement(event.target);
       if (!element) {
         onClearIntent();
         return;
@@ -103,7 +89,7 @@ export function useSelectionMode(options: UseSelectionModeOptions): RuntimeSelec
       window.removeEventListener("contextmenu", onContextMenu, true);
       window.removeEventListener("keydown", onKeyDown, true);
     };
-  }, [enabled, hostElement, onClearIntent, onContextSelect, onEscape, onPrimarySelect]);
+  }, [enabled, onClearIntent, onContextSelect, onEscape, onPrimarySelect]);
 
   return hoveredTarget;
 }
